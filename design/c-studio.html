@@ -1,0 +1,252 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Studio Direction</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#111217; --pane:#17181f; --pane2:#1d1e27; --line:#2a2b36; --ink:#e7e7ee; --muted:#8a8ca0; --dim:#5d5f72;
+    --accent:#8b6cff; --accent-soft:rgba(139,108,255,.14);
+    --saved:#7d8095; --applied:#4ea8ff; --interview:#ffb547; --offer:#3ddc84; --rejected:#ff6b6b;
+    --add:rgba(61,220,132,.16); --add-ink:#6ff0a6; --del:rgba(255,107,107,.15); --del-ink:#ff9a9a;
+    --paper:#fbfbfd; --paper-ink:#1c1d24;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:Inter, system-ui, sans-serif; background:var(--bg); color:var(--ink); font-size:13px; height:100vh; overflow:hidden; }
+  .mono { font-family:'JetBrains Mono', monospace; }
+  .app { display:grid; grid-template-columns:48px 260px 1fr 340px; height:100vh; }
+  .rail { background:var(--bg); border-right:1px solid var(--line); display:flex; flex-direction:column; align-items:center; padding:12px 0; gap:6px; }
+  .rail button { all:unset; width:34px; height:34px; border-radius:8px; display:grid; place-items:center; cursor:pointer; color:var(--muted); font-size:15px; }
+  .rail button.on, .rail button:hover { background:var(--pane2); color:var(--ink); }
+  .rail .lg { width:26px; height:26px; border-radius:7px; background:linear-gradient(135deg,var(--accent),#4ea8ff); margin-bottom:10px; }
+  .list { background:var(--pane); border-right:1px solid var(--line); overflow:auto; }
+  .lh { padding:14px 14px 10px; display:flex; justify-content:space-between; align-items:center; }
+  .lh b { font-size:13px; }
+  .kbd { font-family:'JetBrains Mono', monospace; font-size:10px; padding:2px 6px; border-radius:4px; border:1px solid var(--line); color:var(--muted); }
+  .filter { margin:0 12px 10px; padding:7px 10px; border-radius:7px; background:var(--pane2); color:var(--dim); border:1px solid var(--line); }
+  .grp { padding:10px 14px 4px; font-size:10.5px; text-transform:uppercase; letter-spacing:.09em; color:var(--dim); display:flex; gap:6px; align-items:center; }
+  .grp i { width:7px; height:7px; border-radius:2px; }
+  .it { padding:8px 14px; cursor:pointer; border-left:2px solid transparent; }
+  .it:hover { background:var(--pane2); }
+  .it.on { background:var(--pane2); border-left-color:var(--accent); }
+  .it b { font-weight:500; display:block; } .it span { color:var(--muted); font-size:12px; }
+  .center { display:flex; flex-direction:column; overflow:hidden; }
+  .ctop { height:46px; border-bottom:1px solid var(--line); display:flex; align-items:center; gap:4px; padding:0 12px; background:var(--pane); }
+  .tab { padding:6px 12px; border-radius:6px; color:var(--muted); cursor:pointer; }
+  .tab.on { background:var(--pane2); color:var(--ink); }
+  .sp { flex:1; }
+  .btn { all:unset; cursor:pointer; padding:6px 12px; border-radius:7px; border:1px solid var(--line); color:var(--ink); background:var(--pane2); font-weight:500; }
+  .btn.pri { background:var(--accent); border-color:var(--accent); color:#fff; }
+  .cbody { flex:1; overflow:auto; padding:28px; }
+  .view { display:none; } .view.on { display:block; }
+  .page { background:var(--paper); color:var(--paper-ink); max-width:660px; margin:0 auto; padding:48px 56px; border-radius:4px; font-size:13.5px; line-height:1.6; box-shadow:0 20px 60px rgba(0,0,0,.4); }
+  .page h2 { margin:0; font-size:26px; letter-spacing:-0.02em; } .page .r { color:#6b6d7d; margin-bottom:14px; }
+  .page h5 { font-size:10.5px; text-transform:uppercase; letter-spacing:.12em; color:#6046d9; margin:18px 0 6px; }
+  .blk { position:relative; padding:3px 8px; margin:0 -8px; border-radius:5px; cursor:text; }
+  .blk:hover { background:#f0eefb; }
+  .blk .n { position:absolute; left:-46px; top:4px; font-family:'JetBrains Mono', monospace; font-size:10px; color:#b5b6c4; }
+  .blk.sel { background:#efeaff; box-shadow:inset 2px 0 0 #6046d9; }
+  .page ins { background:#d6f5e3; color:#11683a; text-decoration:none; padding:0 2px; border-radius:2px; }
+  .page del { background:#fde0e0; color:#a52323; padding:0 2px; border-radius:2px; }
+  /* right pane */
+  .right { background:var(--pane); border-left:1px solid var(--line); display:flex; flex-direction:column; overflow:hidden; }
+  .rtabs { height:46px; display:flex; align-items:center; gap:4px; padding:0 10px; border-bottom:1px solid var(--line); }
+  .rbody { flex:1; overflow:auto; padding:14px; }
+  .rv { display:none; } .rv.on { display:block; }
+  .card { background:var(--pane2); border:1px solid var(--line); border-radius:10px; padding:12px; margin-bottom:10px; }
+  .card h4 { margin:0 0 8px; font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); font-weight:600; }
+  .diff { font-size:12.5px; line-height:1.55; }
+  .diff del { background:var(--del); color:var(--del-ink); } .diff ins { background:var(--add); color:var(--add-ink); text-decoration:none; }
+  .acts { display:flex; gap:6px; margin-top:10px; }
+  .acts button { all:unset; cursor:pointer; padding:5px 10px; border-radius:6px; font-size:12px; border:1px solid var(--line); }
+  .acts .ok { background:var(--offer); color:#0b2a18; border-color:var(--offer); font-weight:600; }
+  .score { display:flex; align-items:center; gap:12px; }
+  .score .big { font-size:28px; font-weight:700; font-family:'JetBrains Mono', monospace; color:var(--offer); }
+  .meter { flex:1; height:6px; background:var(--line); border-radius:3px; overflow:hidden; } .meter i { display:block; height:100%; width:72%; background:var(--offer); }
+  .kw { display:inline-block; margin:3px 3px 0 0; padding:2px 7px; border-radius:5px; background:var(--accent-soft); color:#c4b5ff; font-size:11.5px; }
+  .kw.miss { background:var(--del); color:var(--del-ink); }
+  .ask { margin-top:auto; border-top:1px solid var(--line); padding:12px; }
+  .ask div { padding:9px 12px; border-radius:8px; background:var(--pane2); border:1px solid var(--line); color:var(--dim); }
+  .file { display:flex; align-items:center; gap:8px; padding:9px 10px; background:var(--pane2); border:1px solid var(--line); border-radius:8px; margin-bottom:6px; cursor:grab; }
+  .file b { flex:1; font-weight:500; font-size:12px; }
+  /* dashboard */
+  .kpis { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-bottom:14px; }
+  .kpi { background:var(--pane); border:1px solid var(--line); border-radius:10px; padding:14px; }
+  .kpi .v { font-size:24px; font-weight:700; font-family:'JetBrains Mono', monospace; } .kpi .l { color:var(--muted); font-size:11.5px; }
+  .heat { display:grid; grid-template-columns:repeat(26, 1fr); gap:3px; }
+  .heat i { aspect-ratio:1; border-radius:2px; background:var(--pane2); }
+  .g2 { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:10px; }
+  .pn { background:var(--pane); border:1px solid var(--line); border-radius:10px; padding:14px; }
+  .pn h3 { margin:0 0 12px; font-size:12px; color:var(--muted); font-weight:600; text-transform:uppercase; letter-spacing:.08em; }
+  .ln { display:flex; justify-content:space-between; padding:8px 0; border-top:1px solid var(--line); }
+  .ln:first-of-type { border-top:0; }
+  .st { font-size:11px; padding:2px 8px; border-radius:999px; }
+  /* job detail */
+  .jd { max-width:760px; margin:0 auto; }
+  .jd h1 { margin:0; font-size:22px; } .jd p { color:var(--muted); }
+  .pipe { display:flex; gap:6px; margin:14px 0 18px; }
+  .pipe span { flex:1; padding:8px; text-align:center; border-radius:7px; background:var(--pane); border:1px solid var(--line); color:var(--muted); cursor:pointer; }
+  .pipe span.on { background:rgba(255,181,71,.15); border-color:var(--interview); color:var(--interview); font-weight:600; }
+  .posting { background:var(--pane); border:1px solid var(--line); border-radius:10px; padding:16px 18px; line-height:1.6; color:#c9cad6; }
+  /* palette */
+  .pal { position:fixed; inset:0; background:rgba(0,0,0,.5); display:none; align-items:flex-start; justify-content:center; padding-top:14vh; z-index:20; }
+  .pal.on { display:flex; }
+  .pal .bx { width:560px; max-width:92vw; background:var(--pane); border:1px solid var(--line); border-radius:12px; box-shadow:0 30px 80px rgba(0,0,0,.6); overflow:hidden; }
+  .pal input { all:unset; display:block; width:100%; box-sizing:border-box; padding:16px 18px; font-size:15px; border-bottom:1px solid var(--line); }
+  .pal .o { padding:10px 18px; display:flex; justify-content:space-between; color:var(--muted); }
+  .pal .o.on { background:var(--accent-soft); color:var(--ink); }
+</style>
+</head>
+<body>
+<div class="app">
+  <nav class="rail">
+    <div class="lg"></div>
+    <button data-v="dash" title="Dashboard">◫</button>
+    <button data-v="job" title="Job">▤</button>
+    <button data-v="editor" class="on" title="Editor">✎</button>
+    <button title="Templates">❏</button>
+    <button title="Profile">◉</button>
+    <div style="flex:1"></div>
+    <button title="Settings">⚙</button>
+  </nav>
+
+  <div class="list">
+    <div class="lh"><b>Jobs</b><span class="kbd">Ctrl K</span></div>
+    <div class="filter">Filter…</div>
+    <div class="grp"><i style="background:var(--interview)"></i>Interview · 1</div>
+    <div class="it on" data-v="editor"><b>Nordwind Logistics</b><span>Senior Frontend Engineer · Thu</span></div>
+    <div class="grp"><i style="background:var(--offer)"></i>Offer · 1</div>
+    <div class="it"><b>Mosaic Media</b><span>Web Engineer · reply by Nov 5</span></div>
+    <div class="grp"><i style="background:var(--applied)"></i>Applied · 3</div>
+    <div class="it"><b>Helix Bank</b><span>Full-stack Developer · follow up</span></div>
+    <div class="it"><b>Atlas Robotics</b><span>Software Engineer, Tools</span></div>
+    <div class="it"><b>Pine & Co</b><span>React Developer</span></div>
+    <div class="grp"><i style="background:var(--saved)"></i>Saved · 2</div>
+    <div class="it"><b>Lumen Health</b><span>Product Engineer · closes Mon</span></div>
+    <div class="it"><b>Orbit Labs</b><span>Frontend Lead</span></div>
+    <div class="grp"><i style="background:var(--rejected)"></i>Rejected · 4</div>
+    <div class="it" style="opacity:.6"><b>Kiko Studio</b><span>Frontend Developer</span></div>
+  </div>
+
+  <div class="center">
+    <div class="ctop">
+      <span class="tab" data-v="job">Job</span><span class="tab on" data-v="editor">CV · EN</span><span class="tab" data-v="editor">Cover letter</span><span class="tab">+</span>
+      <div class="sp"></div>
+      <span class="mono" style="color:var(--dim);margin-right:8px">v4 · saved</span>
+      <button class="btn">History</button><button class="btn">Theme</button><button class="btn pri">✨ Tailor all</button>
+    </div>
+    <div class="cbody">
+      <section class="view on" id="view-editor">
+        <div class="page">
+          <h2>Alex Example</h2><div class="r">Frontend Engineer · Berlin · sample@mail.com</div>
+          <h5>Profile</h5>
+          <div class="blk"><span class="n">01</span>Frontend engineer with 7 years of experience building web applications for fintech and e-commerce companies.</div>
+          <h5>Experience</h5>
+          <div class="blk"><span class="n">02</span><b>Lead Frontend Developer</b>, Parcelio GmbH · 2021–now</div>
+          <div class="blk sel"><span class="n">03</span>• <del>Worked on the frontend of the tracking dashboard.</del> <ins>Led the React/TypeScript rebuild of a shipment-tracking dashboard used by 1,200 partners, mentoring 3 engineers.</ins></div>
+          <div class="blk"><span class="n">04</span>• Built a shared component library used across 4 products, with WCAG AA accessibility.</div>
+          <div class="blk"><span class="n">05</span>• Introduced GraphQL to replace 30+ REST endpoints, cutting page load by 40%.</div>
+          <div class="blk"><span class="n">06</span><b>Frontend Developer</b>, Shoply · 2018–2021</div>
+          <div class="blk"><span class="n">07</span>• Developed checkout features in Vue and later React for 2M monthly users.</div>
+          <h5>Skills</h5>
+          <div class="blk"><span class="n">08</span>React, TypeScript, Vue, GraphQL, Node.js, Jest, Playwright, Figma. German (B2), English (C2).</div>
+        </div>
+      </section>
+
+      <section class="view" id="view-dash">
+        <div class="kpis">
+          <div class="kpi"><div class="v">24</div><div class="l">applied</div></div>
+          <div class="kpi"><div class="v">5</div><div class="l">interviews</div></div>
+          <div class="kpi"><div class="v">1</div><div class="l">offer</div></div>
+          <div class="kpi"><div class="v">21%</div><div class="l">response rate</div></div>
+        </div>
+        <div class="pn"><h3>Activity · last 26 weeks</h3><div class="heat" id="heat"></div></div>
+        <div class="g2">
+          <div class="pn"><h3>Due soon</h3>
+            <div class="ln"><span>Interview: Nordwind</span><span class="mono" style="color:var(--interview)">Thu 14:00</span></div>
+            <div class="ln"><span>Follow up: Helix Bank</span><span class="mono" style="color:var(--muted)">Fri</span></div>
+            <div class="ln"><span>Reply to offer: Mosaic</span><span class="mono" style="color:var(--offer)">Nov 5</span></div>
+          </div>
+          <div class="pn"><h3>By status</h3>
+            <div class="ln"><span>Saved</span><span class="st" style="background:rgba(125,128,149,.2)">2</span></div>
+            <div class="ln"><span>Applied</span><span class="st" style="background:rgba(78,168,255,.2);color:var(--applied)">17</span></div>
+            <div class="ln"><span>Interview</span><span class="st" style="background:rgba(255,181,71,.2);color:var(--interview)">1</span></div>
+            <div class="ln"><span>Rejected</span><span class="st" style="background:var(--del);color:var(--del-ink)">4</span></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="view" id="view-job">
+        <div class="jd">
+          <h1>Senior Frontend Engineer</h1><p>Nordwind Logistics · Hamburg (hybrid) · €75–90k · saved Oct 12 · posting complete ✓</p>
+          <div class="pipe"><span>Saved</span><span>Applied</span><span class="on">Interview</span><span>Offer</span><span>Rejected</span></div>
+          <div class="posting">We're looking for a senior frontend engineer to lead the rebuild of our shipment tracking platform used by 4,000 logistics partners across Europe. You'll own the architecture of our React and TypeScript apps, mentor two mid-level engineers, and work with design on an accessible component library.<br><br>
+          <span class="kw">React</span><span class="kw">TypeScript</span><span class="kw">Accessibility</span><span class="kw">Mentoring</span><span class="kw">Design systems</span><span class="kw">GraphQL</span><span class="kw">German B2</span></div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <div class="right">
+    <div class="rtabs"><span class="tab on" data-r="ai">✨ AI</span><span class="tab" data-r="post">Posting</span><span class="tab" data-r="bucket">Bucket · 3</span></div>
+    <div class="rbody">
+      <div class="rv on" id="r-ai">
+        <div class="card"><h4>Match</h4><div class="score"><span class="big">72</span><div class="meter"><i></i></div></div>
+          <div style="margin-top:8px"><span class="kw">React</span><span class="kw">TypeScript</span><span class="kw">Mentoring</span><span class="kw miss">Design systems</span><span class="kw miss">German B2</span></div></div>
+        <div class="card"><h4>Block 03 · suggested rewrite</h4>
+          <div class="diff"><del>Worked on the frontend of the tracking dashboard.</del> <ins>Led the React/TypeScript rebuild of a shipment-tracking dashboard used by 1,200 partners, mentoring 3 engineers.</ins></div>
+          <div class="acts"><button class="ok">Accept ⏎</button><button>Reject Esc</button><button>Edit</button><button>↻</button></div></div>
+        <div class="card"><h4>Block 01 · suggestion</h4><div class="diff" style="color:var(--muted)">Mention logistics experience and German B2 to cover two missing keywords.</div>
+          <div class="acts"><button>Generate</button><button>Dismiss</button></div></div>
+        <div class="card"><h4>Block 08 · suggestion</h4><div class="diff" style="color:var(--muted)">Put “Accessibility” and “Design systems” first.</div>
+          <div class="acts"><button>Generate</button><button>Dismiss</button></div></div>
+      </div>
+      <div class="rv" id="r-post"><div class="card" style="line-height:1.6;color:#c9cad6">Lead the rebuild of a shipment tracking platform. Own the React/TS architecture, mentor two engineers, and build an accessible component library with design. German B2 required.</div></div>
+      <div class="rv" id="r-bucket">
+        <div class="file">⠿ <b>Alex_Example_CV_Nordwind.pdf</b></div>
+        <div class="file">⠿ <b>Alex_Example_Cover_Nordwind.pdf</b></div>
+        <div class="file">⠿ <b>Certificates.pdf</b></div>
+        <div class="acts"><button>Open folder</button><button>Zip</button><button class="ok">Merge PDF</button></div>
+      </div>
+    </div>
+    <div class="ask"><div>Ask about this job or doc…  <span class="kbd" style="float:right">/</span></div></div>
+  </div>
+</div>
+
+<div class="pal" id="pal"><div class="bx">
+  <input placeholder="Type a command or search…" value="">
+  <div class="o on"><span>✨ Tailor whole CV for Nordwind</span><span class="kbd">⏎</span></div>
+  <div class="o"><span>＋ New job from link</span><span class="kbd">N</span></div>
+  <div class="o"><span>⇄ Mark Nordwind as Offer</span></div>
+  <div class="o"><span>⬇ Export bundle as merged PDF</span></div>
+  <div class="o"><span>↗ Go to Helix Bank</span></div>
+</div></div>
+
+<script>
+  const heat = document.getElementById('heat');
+  const lv = ['var(--pane2)','rgba(139,108,255,.3)','rgba(139,108,255,.55)','rgba(139,108,255,.85)'];
+  for (let i = 0; i < 26 * 7; i++) { const c = document.createElement('i'); c.style.background = lv[Math.random() < .55 ? 0 : Math.floor(Math.random() * 3) + 1]; heat.appendChild(c); }
+  const show = v => {
+    document.querySelectorAll('.view').forEach(s => s.classList.toggle('on', s.id === 'view-' + v));
+    document.querySelectorAll('.rail button').forEach(b => b.classList.toggle('on', b.dataset.v === v));
+  };
+  document.querySelectorAll('[data-v]').forEach(el => el.addEventListener('click', () => show(el.dataset.v)));
+  document.querySelectorAll('[data-r]').forEach(el => el.addEventListener('click', () => {
+    document.querySelectorAll('[data-r]').forEach(t => t.classList.toggle('on', t === el));
+    document.querySelectorAll('.rv').forEach(r => r.classList.toggle('on', r.id === 'r-' + el.dataset.r));
+  }));
+  document.querySelectorAll('.blk').forEach(b => b.addEventListener('click', () => {
+    document.querySelectorAll('.blk').forEach(x => x.classList.remove('sel')); b.classList.add('sel');
+  }));
+  const pal = document.getElementById('pal');
+  document.addEventListener('keydown', e => {
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); pal.classList.toggle('on'); pal.querySelector('input').focus(); }
+    if (e.key === 'Escape') pal.classList.remove('on');
+  });
+  pal.addEventListener('click', e => { if (e.target === pal) pal.classList.remove('on'); });
+</script>
+</body>
+</html>

@@ -1,0 +1,19 @@
+{
+  "name": "easy-apply",
+  "license": "AGPL-3.0-only",
+  "private": true,
+  "workspaces": ["server", "web"],
+  "scripts": {
+    "dev": "concurrently -n server,web -c yellow,cyan \"npm run dev -w server\" \"npm run dev -w web\"",
+    "build": "npm run build -w web",
+    "start": "npm start -w server",
+    "test": "npm test -w server",
+    "test:pwa": "node server/test/live/pwa.mjs",
+    "test:ai": "cd server && npx tsx test/live/ai-prompts.mts",
+    "typecheck": "tsc -p server --noEmit && tsc -p web --noEmit"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0",
+    "typescript": "^5.6.3"
+  }
+}

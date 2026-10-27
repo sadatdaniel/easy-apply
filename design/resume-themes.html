@@ -1,0 +1,328 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Resume Themes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fira+Sans:wght@500;600;700&family=Roboto:wght@400;500;700&family=Poppins:wght@500;600;700&family=Open+Sans:wght@400;600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600&family=Tinos:wght@400;700&family=Arimo:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  /* ---------- app chrome (Paper look) ---------- */
+  :root { --bg:#f4f0e8; --side:#ebe5d8; --paper:#fffdf8; --ink:#2a2620; --muted:#837a6b; --line:#ddd4c3; --accent:#b4572e; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:Inter, system-ui, sans-serif; background:var(--bg); color:var(--ink); font-size:13.5px; }
+  .bar { position:sticky; top:0; z-index:5; display:flex; align-items:center; gap:14px; padding:12px 24px; background:var(--side); border-bottom:1px solid var(--line); flex-wrap:wrap; }
+  .bar h1 { font-family:Fraunces, serif; font-weight:500; font-size:20px; margin:0 12px 0 0; }
+  .seg { display:flex; background:rgba(0,0,0,.05); border-radius:8px; padding:3px; }
+  .seg button { all:unset; cursor:pointer; padding:5px 12px; border-radius:6px; color:var(--muted); font-weight:500; }
+  .seg button.on { background:var(--paper); color:var(--ink); box-shadow:0 1px 2px rgba(60,40,10,.12); }
+  .sp { flex:1; }
+  .muted { color:var(--muted); }
+  .stage { padding:28px 24px 60px; }
+  .compare { display:grid; grid-template-columns:repeat(4, 1fr); gap:20px; max-width:1500px; margin:0 auto; }
+  .compare .slot { cursor:pointer; }
+  .compare .frame { height:470px; overflow:hidden; border-radius:4px; box-shadow:0 6px 24px rgba(80,60,20,.14); background:#fff; transition:transform .15s; }
+  .compare .slot:hover .frame { transform:translateY(-3px); }
+  .compare .sheet { zoom:.42; }
+  @media (max-width:1300px) { .compare { grid-template-columns:repeat(2, 1fr); max-width:900px; } .compare .sheet { zoom:.52; } }
+  .slot .cap { display:flex; justify-content:space-between; align-items:baseline; margin-top:12px; }
+  .slot .cap b { font-family:Fraunces, serif; font-weight:500; font-size:17px; }
+  .badge { font-size:11px; padding:2px 8px; border-radius:999px; background:#e3f1dc; color:#2f6b1f; font-weight:600; }
+  .single { display:grid; grid-template-columns:auto 280px; gap:26px; justify-content:center; align-items:start; }
+  .single .frame { box-shadow:0 6px 30px rgba(80,60,20,.16); background:#fff; position:relative; }
+  .info { position:sticky; top:84px; background:var(--paper); border:1px solid var(--line); border-radius:12px; padding:16px 18px; display:flex; flex-direction:column; gap:12px; }
+  .info h3 { margin:0; font-family:Fraunces, serif; font-weight:500; font-size:19px; }
+  .info code { background:var(--bg); padding:2px 6px; border-radius:4px; font-size:12px; }
+  .info .row { display:flex; justify-content:space-between; border-top:1px solid var(--line); padding-top:10px; font-size:12.5px; }
+  .note { background:#fdf0c8; border:1px solid #ecd38a; border-radius:10px; padding:10px 12px; font-size:12.5px; line-height:1.45; }
+  .btn { all:unset; cursor:pointer; text-align:center; padding:8px 14px; border-radius:8px; background:var(--paper); border:1px solid var(--line); font-weight:500; }
+  .btn.pri { background:var(--accent); color:#fff; border-color:var(--accent); }
+  .pbreak { position:absolute; left:0; right:-70px; border-top:1.5px dashed #d98b6a; pointer-events:none; }
+  .pbreak span { position:absolute; right:0; top:-9px; font-size:10.5px; color:#b4572e; background:var(--bg); padding:0 4px; }
+
+  /* ---------- the sheet: A4 at 96dpi ---------- */
+  .sheet { width:794px; min-height:1123px; background:#fff; color:#222; position:relative; }
+  .sheet a { color:inherit; }
+  .sheet ul { margin:0; padding:0; list-style:none; }
+
+  /* ===== THEME: Classic (recreates your current CV) ===== */
+  .t-classic { padding:46px 52px; font-family:Roboto, sans-serif; font-size:11.4px; line-height:1.38; }
+  .t-classic h1 { font-family:'Fira Sans', sans-serif; font-weight:700; font-size:31px; margin:0 0 4px; color:#111; letter-spacing:-0.2px; }
+  .t-classic .contact { font-family:'Fira Sans', sans-serif; font-weight:600; font-size:11.4px; display:flex; justify-content:space-between; padding-bottom:6px; border-bottom:1.5px solid #9a9a9a; }
+  .t-classic .contact span + span::before { content:"|"; margin-right:22px; }
+  .t-classic .contact span { display:flex; gap:22px; }
+  .t-classic .summary { margin:14px 0 0; text-align:justify; }
+  .t-classic h2 { font-family:'Fira Sans', sans-serif; font-weight:700; font-size:15px; text-transform:uppercase; margin:20px 0 8px; color:#111; }
+  .t-classic .entry { margin-bottom:12px; }
+  .t-classic .eh { display:flex; justify-content:space-between; align-items:flex-end; font-family:'Fira Sans', sans-serif; font-weight:600; font-size:11.4px; color:#111; margin-bottom:6px; }
+  .t-classic .et { display:block; }
+  .t-classic .lnk { text-decoration:underline; }
+  .t-classic li { position:relative; padding-left:18px; text-align:justify; margin-bottom:1px; }
+  .t-classic li::before { content:"●"; position:absolute; left:2px; top:0; font-size:9px; line-height:16px; }
+  .t-classic .langs div { margin-bottom:1px; }
+
+  /* Classic cover letter = your original Lumen Labs letter (Arial; Arimo is its metric twin) */
+  .t-classic.letter { padding:72px 92px; font-family:Arial, Arimo, sans-serif; font-size:13.3px; line-height:1.3; color:#111; }
+  .t-classic.letter .lh { padding-bottom:16px; border-bottom:1px solid #d8d8d8; margin-bottom:22px; }
+  .t-classic.letter .lh h1 { font-family:Arial, Arimo, sans-serif; font-size:18.7px; margin:0; }
+  .t-classic.letter .lh div { color:#666; font-size:13.3px; }
+  .t-classic.letter .lh div + div { color:#111; }
+  .t-classic.letter .subject { font-weight:700; font-size:16px; margin:26px 0 18px; }
+  .t-classic.letter p { text-align:justify; margin:0 0 16px; }
+
+  /* ===== THEME: Academic (from the academic template: Times 10pt, 0.5in/0.75in margins) ===== */
+  .t-academic { padding:48px 72px; font-family:'Times New Roman', Tinos, serif; font-size:13.3px; line-height:1.15; color:#000; }
+  .t-academic h1 { font-size:22.7px; font-weight:700; margin:0 0 3px; }
+  .t-academic .contact span + span::before { content:" | "; }
+  .t-academic h2 { font-size:13.3px; font-weight:700; text-transform:uppercase; margin:0 0 6px; }
+  /* the template separates every section with a grey 1.5pt full-width rule */
+  .t-academic section { border-top:2px solid #a0a0a0; margin-top:10px; padding-top:9px; }
+  .t-academic .contact { padding-bottom:2px; }
+  .t-academic .row2 { display:grid; grid-template-columns:59% 41%; margin-bottom:8px; }
+  .t-academic .row2 > div:last-child { text-align:right; }
+  .t-academic .et { font-weight:700; display:block; text-align:justify; }
+  .t-academic .entry { margin-bottom:9px; }
+  .t-academic .eo { display:block; }
+  .t-academic .ed { display:block; }
+  .t-academic ul { padding-left:0; }
+  .t-academic li { position:relative; padding-left:24px; text-align:justify; margin-bottom:1px; }
+  .t-academic li::before { content:"●"; position:absolute; left:8px; font-size:8px; top:2px; }
+  .t-academic.letter p { margin:0 0 12px; text-align:justify; }
+  .t-academic.letter .subject { font-weight:700; margin:16px 0 12px; }
+
+  /* ===== THEME: Sidebar (Poppins + Open Sans, both already in your Word file) ===== */
+  .t-sidebar { display:grid; grid-template-columns:250px 1fr; font-family:'Open Sans', sans-serif; font-size:11px; line-height:1.45; }
+  .t-sidebar .side { background:#eef4f3; padding:44px 24px; color:#24403c; }
+  .t-sidebar .main { padding:44px 40px 44px 34px; }
+  .t-sidebar h1 { font-family:Poppins, sans-serif; font-weight:700; font-size:29px; line-height:1.1; margin:0 0 6px; color:#0f4c45; }
+  .t-sidebar .tag { font-family:Poppins, sans-serif; font-weight:500; color:#0f766e; font-size:12.5px; margin-bottom:20px; }
+  .t-sidebar .contact span { display:block; margin-bottom:5px; word-break:break-word; }
+  .t-sidebar h2 { font-family:Poppins, sans-serif; font-weight:600; font-size:12px; letter-spacing:.14em; text-transform:uppercase; color:#0f766e; margin:24px 0 9px; }
+  .t-sidebar .main h2 { display:flex; align-items:center; gap:10px; }
+  .t-sidebar .main h2::after { content:""; flex:1; height:1px; background:#cfe1de; }
+  .t-sidebar .main section:first-child h2 { margin-top:0; }
+  .t-sidebar .summary { margin:0 0 4px; }
+  .t-sidebar .skills li { margin-bottom:8px; }
+  .t-sidebar .skills b { display:block; font-family:Poppins, sans-serif; font-weight:500; font-size:11px; color:#0f4c45; }
+  .t-sidebar .entry { margin-bottom:13px; }
+  .t-sidebar .eh { display:flex; justify-content:space-between; gap:10px; margin-bottom:4px; }
+  .t-sidebar .et { font-family:Poppins, sans-serif; font-weight:600; font-size:12px; color:#173a36; display:block; }
+  .t-sidebar .eo { color:#5a6f6c; }
+  .t-sidebar .ed { font-size:10.5px; color:#0f766e; font-weight:600; white-space:nowrap; }
+  .t-sidebar .main li { position:relative; padding-left:13px; margin-bottom:2px; }
+  .t-sidebar .main li::before { content:""; position:absolute; left:2px; top:6px; width:5px; height:5px; border-radius:50%; background:#0f766e; }
+  .t-sidebar .side .entry .et { font-size:11px; }
+  .t-sidebar .side .eh { flex-direction:column; gap:2px; }
+  .t-sidebar .side .ed { white-space:normal; }
+  .t-sidebar.letter { grid-template-columns:250px 1fr; }
+  .t-sidebar.letter p { margin:0 0 12px; font-size:11.8px; line-height:1.55; }
+  .t-sidebar.letter .subject { font-family:Poppins, sans-serif; font-weight:600; font-size:14px; color:#0f4c45; margin:0 0 16px; }
+
+  /* ===== THEME: Serif (calm, editorial) ===== */
+  .t-serif { padding:54px 64px; font-family:'Source Serif 4', serif; font-size:11.8px; line-height:1.48; color:#2a2620; }
+  .t-serif header { text-align:center; margin-bottom:16px; }
+  .t-serif h1 { font-family:Fraunces, serif; font-weight:500; font-size:34px; margin:0; letter-spacing:-0.3px; }
+  .t-serif .contact { font-size:11px; color:#7a7064; margin-top:6px; }
+  .t-serif .contact span + span::before { content:"·"; margin:0 9px; }
+  .t-serif .summary { text-align:center; font-style:italic; color:#4a433a; max-width:560px; margin:0 auto; }
+  .t-serif h2 { font-family:Inter, sans-serif; font-weight:600; font-size:10px; letter-spacing:.2em; text-transform:uppercase; color:#b4572e; margin:22px 0 9px; padding-bottom:4px; border-bottom:.8px solid #e0d6c6; }
+  .t-serif .entry { margin-bottom:11px; }
+  .t-serif .eh { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:3px; }
+  .t-serif .et { font-weight:600; } .t-serif .eo { font-style:italic; color:#6d6458; }
+  .t-serif .eh > div > * { display:inline; } .t-serif .eo::before { content:" — "; font-style:normal; }
+  .t-serif .ed { font-family:Inter, sans-serif; font-size:10px; color:#7a7064; white-space:nowrap; }
+  .t-serif li { position:relative; padding-left:14px; margin-bottom:1px; }
+  .t-serif li::before { content:"–"; position:absolute; left:0; color:#b4572e; }
+  .t-serif .skills li::before { content:none; } .t-serif .skills li { padding-left:0; }
+  .t-serif .langs { display:flex; gap:24px; }
+  .t-serif.letter header { text-align:left; border-bottom:.8px solid #e0d6c6; padding-bottom:14px; margin-bottom:24px; }
+  .t-serif.letter h1 { font-size:26px; }
+  .t-serif.letter .subject { font-family:Fraunces, serif; font-size:16px; font-weight:500; margin:20px 0 14px; }
+  .t-serif.letter p { margin:0 0 12px; text-align:left; font-size:12.4px; line-height:1.55; }
+</style>
+</head>
+<body>
+<div class="bar">
+  <h1>Resume themes</h1>
+  <div class="seg" id="doc"><button class="on" data-d="cv">CV · English</button><button data-d="letter">Cover letter</button></div>
+  <div class="seg" id="mode"><button class="on" data-m="compare">Compare</button><button data-m="classic">Classic</button><button data-m="sidebar">Sidebar</button><button data-m="serif">Serif</button><button data-m="academic">Academic</button></div>
+  <span class="sp"></span>
+  <span class="muted">Same content in every theme. A theme is just a CSS file.</span>
+</div>
+<div class="stage" id="stage"></div>
+
+<script>
+/* One content source. In the app this is cv-en.md parsed into blocks. */
+const CV = {
+  name: 'Alex Example',
+  tagline: 'Software Developer & Data Analyst',
+  contact: ['+49 151 000 0000', 'alex@example.com', 'alex-example.dev', '20095 Hamburg'],
+  summary: 'Software developer and data analyst with experience in full-stack development, backend systems, and data analysis. Focus on scalable applications, data processing, and efficient technical solutions.',
+  skills: [
+    ['Programming Languages', 'Python, Dart, Java, Elixir'],
+    ['Frameworks & Tools', 'Flutter, Flask, MongoDB, REST APIs, Git, Bash, GCP'],
+    ['Data Analysis', 'NumPy, Pandas, Matplotlib, scikit-learn, BeautifulSoup, SQL'],
+    ['Design', 'Figma, Inkscape <a class="lnk">[Link]</a>'],
+  ],
+  experience: [
+    { t:'Data and Operations Analyst', o:'Harbour Foods, United Kingdom', d:'12/2024 – 01/2026', b:[
+      'Developed automation scripts and internal tools in Python for data processing and reporting',
+      'Developed SQL queries and analytical workflows to analyze operational data and drive data-driven decisions',
+      'Analyzing order, sales, and delivery data across multiple channels (store, delivery platforms, Uber Eats) to identify trends and optimize business decisions',
+      'Building structured data models and internal tracking systems to consolidate order and customer data',
+      'Working directly with business owners to translate operational requirements into technical solutions']},
+    { t:'Full-Stack Flutter Developer', o:'Kiel Apps <a class="lnk">[Google Play]</a>', d:'09/2022 – 09/2024', b:[
+      'Development and redesign of a mobile application using Flutter, including architecture, data management, and UI integration',
+      'Integration of Google AdMob to monetize the news feed (increasing app revenue by approximately 60%)',
+      'Implementation of push notifications using OneSignal to improve user engagement (approx. +50%)',
+      'Use of Firebase and Cloud Firestore for authentication and data storage',
+      'Reduction of maintenance effort by approximately 30% through clean architecture and the use of Isar DB and Provider']},
+    { t:'Data Analyst (Part-Time)', o:'Nordsee Institute', d:'04/2023 – 10/2023', b:[
+      'Created and updated over 50 marketing dashboards per month to support data-driven decision-making',
+      'Developed internal applications to extend HubSpot by integrating external third-party solutions',
+      'Deriving recommendations for optimizing processes and guidelines based on data analysis',
+      'Technical support and further development of the WordPress website, including theme customizations, content updates, and plugin configuration']},
+    { t:'Flutter Developer Intern (Internship)', o:'Elbe Mobile', d:'07/2021 – 01/2022', b:[
+      'Integration of Mapbox, REST APIs, and MVC+S architecture',
+      'Performance optimization of core app features, resulting in an efficiency increase of approximately 10%',
+      'Collaboration with UX/UI designers to improve usability, reducing user churn by approximately 15%']},
+  ],
+  projects: [
+    { t:'Machine learning model for predicting heart disease <a class="lnk">[Link]</a>', d:'Scikit-learn, Pandas, NumPy, Seaborn', b:[
+      'Development and evaluation of classification models (Random Forest)',
+      'Hyperparameter optimization using RandomizedSearchCV',
+      'Data preparation, feature engineering, and model evaluation']},
+    { t:'Taskboard – Backend Web Application <a class="lnk">[Link]</a>', d:'Elixir, Phoenix Framework, Ecto', b:[
+      'Development of a scalable backend using Elixir and Phoenix to manage user accounts and interest profiles.',
+      'Design of data models, implementation of database migrations, and development of a modular backend architecture using Ecto.']},
+  ],
+  education: [{ t:'Bachelor of Science (B.S.) in Computer Engineering', o:'University of Hamburg, Germany', d:'01/2023' }],
+  certificates: [{ t:'Google Data Analytics Professional Specialization <a class="lnk">[Link]</a>', o:'', d:'Coursera | Google' }],
+  languages: ['English – C1', 'German – B1'],
+};
+
+const LETTER = {
+  date: 'May 2026', to: ['Lumen Labs', 'Hamburg, Germany'], subject: 'Re: Senior Full-Stack Developer / Data Scientist', greeting: 'Dear Lumen Labs Team,',
+  body: [
+    'Building smarter tools for music discovery is exactly the kind of mission that excites me - and I believe my background makes me a strong fit for this foundational engineering role. As a full-stack developer and data analyst with hands-on experience across Python backends, Flutter frontends, data pipelines, and machine learning, I am confident I can own the entire technical stack and grow alongside Lumen Labs.',
+    'My two years as a Full-Stack Flutter Developer at Kiel Apps gave me end-to-end product ownership: I redesigned the mobile architecture from the ground up, integrated Firebase and Cloud Firestore, implemented monetisation via Google AdMob (driving ~60% revenue growth), and improved user retention by ~50% through push notifications. I have also built scalable backends with Elixir/Phoenix and Flask, and I am comfortable designing data models, REST APIs, and modular architectures that can evolve as a product scales.',
+    'On the data side, I thrive in exactly the kind of environment Lumen Labs needs. At Harbour Foods I built Python automation scripts, SQL analytical workflows, and internal tracking systems to turn raw operational data into actionable decisions - working directly with business owners, much like collaborating with founders. I have also trained and evaluated machine learning models (Random Forest classifiers, feature engineering, hyperparameter optimisation with scikit-learn), which means I can contribute meaningfully to Lumen Labs’s AI-driven scouting engine from day one.',
+    'Early-stage startup dynamics suit me well. I am used to taking ownership with limited resources, making pragmatic technical decisions, and shipping features end to end without waiting for a large team. The prospect of growing into a CTO-level role as Lumen Labs scales is genuinely motivating - it aligns with how I approach engineering: not just writing code, but thinking strategically about architecture, maintainability, and the product’s long-term direction.',
+    'I am excited by what Lumen Labs is building and would love to bring my full-stack and data skills to your core team. I am available for a conversation at your earliest convenience.'],
+  closing: 'Warm regards,',
+};
+
+const THEMES = {
+  classic: { name:'Classic', layout:'single', file:'themes/classic.css', fonts:'Fira Sans + Roboto · letter: Arial', note:'Your original design, kept as is. The CV recreates your current one (headings now consistently uppercase), and the cover letter recreates your Lumen Labs letter in Arial.', def:true },
+  sidebar: { name:'Sidebar', layout:'sidebar', file:'themes/sidebar.css', fonts:'Poppins + Open Sans', note:'Skills, education and languages move to a side column, so experience gets more room. Good for 1-page CVs.' },
+  academic:{ name:'Academic', layout:'academic', file:'themes/academic.css', fonts:'Times New Roman', note:'From the academic template you added: Times 10pt, narrow margins, education first with dates and grades on the right. Good for PhD, research and university applications.' },
+  serif:   { name:'Serif', layout:'single', file:'themes/serif.css', fonts:'Fraunces + Source Serif', note:'Calm and editorial, matching the app’s Paper look. Good for cover letters and less technical roles.' },
+};
+
+/* ---- renderers ---- */
+const entry = e => `<div class="entry"><div class="eh"><div><span class="et">${e.t}</span>${e.o ? `<span class="eo">${e.o}</span>` : ''}</div><span class="ed">${e.d}</span></div>${e.b ? `<ul>${e.b.map(x => `<li>${x}</li>`).join('')}</ul>` : ''}</div>`;
+const sec = (title, html) => `<section><h2>${title}</h2>${html}</section>`;
+const skills = () => `<ul class="skills">${CV.skills.map(([k, v]) => `<li><b>${k}:</b> ${v}</li>`).join('')}</ul>`;
+const langs = () => `<div class="langs">${CV.languages.map(l => `<div>${l}</div>`).join('')}</div>`;
+const contact = () => `<div class="contact">${CV.contact.map(c => `<span>${c}</span>`).join('')}</div>`;
+
+const row2 = (l, r) => `<div class="row2"><div>${l}</div><div>${r}</div></div>`;
+function renderAcademic() {
+  return `<div class="sheet t-academic">
+    <h1>${CV.name}</h1>
+    <div class="contact"><span>Phone: ${CV.contact[0]}</span><span>Email: ${CV.contact[1]}</span><span>Website: ${CV.contact[2]}</span><span>${CV.contact[3]}</span></div>
+    ${sec('Education', CV.education.map(e => row2(`<span class="et">${e.t}</span>${e.o}`, e.d)).join(''))}
+    ${sec('Projects', CV.projects.map(p => `<div class="entry"><span class="et">${p.t}</span><span class="eo"><i>${p.d}</i></span><ul>${p.b.map(x => `<li>${x}</li>`).join('')}</ul></div>`).join(''))}
+    ${sec('Professional Experience', CV.experience.map(e => `<div class="entry">${row2(`<span class="et">${e.t}</span>${e.o}`, e.d)}<ul>${e.b.map(x => `<li>${x}</li>`).join('')}</ul></div>`).join(''))}
+    ${sec('Technical Skills', `<ul>${CV.skills.map(([k, v]) => `<li>${k}: ${v}</li>`).join('')}</ul>`)}
+    ${sec('Certifications', `<ul>${CV.certificates.map(c => `<li><b>${c.t}</b> | ${c.d}</li>`).join('')}</ul>`)}
+    ${sec('Languages', `<ul>${CV.languages.map(l => `<li>${l}</li>`).join('')}</ul>`)}</div>`;
+}
+
+function renderCV(theme) {
+  const t = THEMES[theme];
+  if (t.layout === 'academic') return renderAcademic();
+  if (t.layout === 'sidebar') {
+    return `<div class="sheet t-${theme}">
+      <div class="side"><h1>${CV.name.replace(' ', '<br>')}</h1><div class="tag">${CV.tagline}</div>${contact()}
+        ${sec('Skills', `<ul class="skills">${CV.skills.map(([k, v]) => `<li><b>${k}</b>${v}</li>`).join('')}</ul>`)}
+        ${sec('Education', CV.education.map(entry).join(''))}
+        ${sec('Certificates', CV.certificates.map(entry).join(''))}
+        ${sec('Languages', langs())}</div>
+      <div class="main">${sec('Profile', `<p class="summary">${CV.summary}</p>`)}
+        ${sec('Experience', CV.experience.map(entry).join(''))}
+        ${sec('Projects', CV.projects.map(entry).join(''))}</div></div>`;
+  }
+  return `<div class="sheet t-${theme}">
+    <header><h1>${CV.name}</h1>${contact()}</header><p class="summary">${CV.summary}</p>
+    ${sec('Skills', skills())}
+    ${sec('Professional Experience', CV.experience.map(entry).join(''))}
+    ${sec('Projects', CV.projects.map(entry).join(''))}
+    ${sec('Education', CV.education.map(entry).join(''))}
+    ${sec('Certificates', CV.certificates.map(entry).join(''))}
+    ${sec('Languages', langs())}</div>`;
+}
+
+function renderLetter(theme) {
+  const t = THEMES[theme];
+  const body = `<p>${LETTER.date}</p><p><b>${LETTER.to[0]}</b><br>${LETTER.to[1]}</p><div class="subject">${LETTER.subject}</div><p>${LETTER.greeting}</p>${LETTER.body.map(p => `<p>${p}</p>`).join('')}<p>${LETTER.closing}<br><b>${CV.name}</b></p>`;
+  if (t.layout === 'sidebar') {
+    return `<div class="sheet t-${theme} letter"><div class="side"><h1>${CV.name.replace(' ', '<br>')}</h1><div class="tag">${CV.tagline}</div>${contact()}</div><div class="main">${body}</div></div>`;
+  }
+  return `<div class="sheet t-${theme} letter"><header class="lh"><h1>${CV.name}</h1><div>${CV.tagline}</div><div>${CV.contact[1]}</div></header>${body}</div>`;
+}
+
+/* ---- page ---- */
+let doc = 'cv', mode = 'compare';
+const stage = document.getElementById('stage');
+const render = th => doc === 'cv' ? renderCV(th) : renderLetter(th);
+
+function draw() {
+  if (mode === 'compare') {
+    stage.innerHTML = `<div class="compare">${Object.entries(THEMES).map(([k, t]) => `
+      <div class="slot" data-k="${k}"><div class="frame">${render(k)}</div>
+      <div class="cap"><b>${t.name}</b>${t.def ? '<span class="badge">Default · your current CV</span>' : `<span class="muted">${t.fonts}</span>`}</div></div>`).join('')}</div>`;
+    stage.querySelectorAll('.slot').forEach(s => s.onclick = () => setMode(s.dataset.k));
+    return;
+  }
+  const t = THEMES[mode];
+  stage.innerHTML = `<div class="single"><div class="frame" id="frame">${render(mode)}</div>
+    <div class="info"><h3>${t.name}${t.def ? ' <span class="badge">Default</span>' : ''}</h3>
+      <div class="note">${t.note}</div>
+      <div class="row"><span class="muted">Theme file</span><code>${t.file}</code></div>
+      <div class="row"><span class="muted">Fonts</span><span>${t.fonts}</span></div>
+      <div class="row"><span class="muted">Layout</span><span>${t.layout === 'sidebar' ? 'Two columns' : 'One column'}</span></div>
+      <div class="row"><span class="muted">Pages</span><span id="pages"></span></div>
+      <button class="btn pri">Use for this job</button>
+      <button class="btn">Set as default</button>
+      <span class="muted" style="font-size:12px">To add a design later, drop a new CSS file in <code>themes/</code>. It shows up here automatically.</span>
+    </div></div>`;
+  // mark A4 page breaks so you can see where page 2 starts
+  requestAnimationFrame(() => {
+    const f = document.getElementById('frame'), h = f.firstElementChild.offsetHeight;
+    const n = Math.ceil(h / 1123);
+    document.getElementById('pages').textContent = n + (n === 1 ? ' page' : ' pages') + ' (A4)';
+    for (let i = 1; i < n; i++) f.insertAdjacentHTML('beforeend', `<div class="pbreak" style="top:${i * 1123}px"><span>page ${i + 1}</span></div>`);
+  });
+}
+function setMode(m) {
+  mode = m;
+  document.querySelectorAll('#mode button').forEach(b => b.classList.toggle('on', b.dataset.m === m));
+  draw(); scrollTo(0, 0);
+}
+document.querySelectorAll('#mode button').forEach(b => b.onclick = () => setMode(b.dataset.m));
+document.querySelectorAll('#doc button').forEach(b => b.onclick = () => {
+  doc = b.dataset.d;
+  document.querySelectorAll('#doc button').forEach(x => x.classList.toggle('on', x === b));
+  draw();
+});
+// deep links: #classic, #sidebar, #letter-serif …
+const h = location.hash.slice(1).split('-');
+if (h[0] === 'letter') { doc = 'letter'; h.shift(); document.querySelectorAll('#doc button').forEach(x => x.classList.toggle('on', x.dataset.d === 'letter')); }
+if (THEMES[h[0]]) mode = h[0];
+document.querySelectorAll('#mode button').forEach(b => b.classList.toggle('on', b.dataset.m === mode));
+document.fonts.ready.then(draw);
+draw();
+</script>
+</body>
+</html>

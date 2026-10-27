@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Board Direction</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#f5f6fb; --card:#fff; --ink:#151837; --muted:#6a6f8f; --line:#e3e5f0; --accent:#4f46e5; --accent-soft:#eceafd;
+    --saved:#8b90a8; --applied:#2f80ed; --interview:#f2994a; --offer:#27ae60; --rejected:#eb5757;
+    --add:#dcf5e5; --add-ink:#17663a; --del:#fde2e2; --del-ink:#a32020;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:Inter, system-ui, sans-serif; background:var(--bg); color:var(--ink); font-size:14px; }
+  header { height:58px; background:var(--card); border-bottom:1px solid var(--line); display:flex; align-items:center; padding:0 24px; gap:28px; position:sticky; top:0; z-index:5; }
+  .logo { font-weight:700; font-size:16px; display:flex; align-items:center; gap:8px; }
+  .logo i { width:22px; height:22px; border-radius:6px; background:var(--accent); display:inline-block; }
+  .tabs { display:flex; gap:4px; }
+  .tabs button { all:unset; cursor:pointer; padding:8px 14px; border-radius:8px; color:var(--muted); font-weight:500; }
+  .tabs button.on { background:var(--accent-soft); color:var(--accent); }
+  .sp { flex:1; }
+  .search { width:280px; padding:8px 12px; border:1px solid var(--line); border-radius:8px; color:var(--muted); background:var(--bg); }
+  .btn { all:unset; cursor:pointer; padding:8px 14px; border-radius:8px; background:var(--card); border:1px solid var(--line); font-weight:500; white-space:nowrap; }
+  .btn.pri { background:var(--accent); color:#fff; border-color:var(--accent); }
+  .view { display:none; padding:24px; } .view.on { display:block; }
+  h1 { font-size:22px; margin:0 0 4px; letter-spacing:-0.01em; } .sub { color:var(--muted); margin:0 0 20px; }
+  /* board */
+  .board { display:grid; grid-template-columns:repeat(5, minmax(220px,1fr)); gap:14px; align-items:start; overflow-x:auto; }
+  .col { background:#eceef6; border-radius:12px; padding:10px; }
+  .colh { display:flex; align-items:center; gap:8px; font-weight:600; padding:4px 6px 10px; }
+  .colh .c { margin-left:auto; color:var(--muted); font-weight:500; }
+  .bar { width:10px; height:10px; border-radius:3px; }
+  .card { background:var(--card); border-radius:10px; padding:12px; margin-bottom:8px; box-shadow:0 1px 2px rgba(20,24,60,.08); cursor:pointer; border:1px solid transparent; }
+  .card:hover { border-color:var(--accent); }
+  .card .co { font-size:12px; color:var(--muted); display:flex; align-items:center; gap:6px; }
+  .av { width:18px; height:18px; border-radius:5px; display:grid; place-items:center; font-size:10px; font-weight:700; color:#fff; }
+  .card .ti { font-weight:600; margin:6px 0 10px; }
+  .meta { display:flex; gap:6px; flex-wrap:wrap; }
+  .tg { font-size:11px; padding:2px 7px; border-radius:5px; background:var(--bg); color:var(--muted); }
+  .tg.warn { background:#fff1e6; color:#b25c12; } .tg.ok { background:var(--add); color:var(--add-ink); }
+  /* drawer */
+  .scrim { position:fixed; inset:0; background:rgba(20,24,60,.25); opacity:0; pointer-events:none; transition:.2s; z-index:9; }
+  .drawer { position:fixed; top:0; right:0; bottom:0; width:520px; max-width:100%; background:var(--card); box-shadow:-10px 0 40px rgba(20,24,60,.15); transform:translateX(100%); transition:.25s; z-index:10; overflow:auto; padding:24px; }
+  body.open .scrim { opacity:1; pointer-events:auto; } body.open .drawer { transform:none; }
+  .seg { display:flex; background:var(--bg); border-radius:10px; padding:4px; margin:16px 0; }
+  .seg span { flex:1; text-align:center; padding:7px 4px; border-radius:7px; font-size:12px; color:var(--muted); cursor:pointer; }
+  .seg span.on { background:var(--interview); color:#fff; font-weight:600; }
+  .box { border:1px solid var(--line); border-radius:10px; padding:14px; margin-bottom:12px; }
+  .box h4 { margin:0 0 10px; font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); }
+  .kw { display:inline-block; margin:2px 3px 2px 0; padding:3px 8px; border-radius:6px; background:var(--accent-soft); color:var(--accent); font-size:12px; }
+  .kw.miss { background:var(--del); color:var(--del-ink); }
+  .file { display:flex; align-items:center; gap:10px; padding:10px; border-radius:8px; background:var(--bg); margin-bottom:6px; }
+  .file b { flex:1; font-weight:500; } .file .pct { font-weight:700; color:var(--offer); font-size:12px; }
+  .timeline div { position:relative; padding:0 0 12px 18px; color:var(--muted); font-size:13px; }
+  .timeline div::before { content:""; position:absolute; left:3px; top:6px; width:7px; height:7px; border-radius:50%; background:var(--accent); }
+  /* dashboard */
+  .kpis { display:grid; grid-template-columns:repeat(5,1fr); gap:12px; margin-bottom:16px; }
+  .kpi { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:14px 16px; }
+  .kpi .n { font-size:26px; font-weight:700; } .kpi .l { font-size:12px; color:var(--muted); } .kpi .d { font-size:12px; color:var(--offer); }
+  .g2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .pnl { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px 18px; }
+  .pnl h3 { margin:0 0 14px; font-size:14px; }
+  .funnel div { display:flex; align-items:center; gap:10px; margin-bottom:8px; font-size:12px; }
+  .funnel span:first-child { width:70px; color:var(--muted); }
+  .funnel i { height:26px; border-radius:6px; display:flex; align-items:center; padding-left:10px; color:#fff; font-style:normal; font-weight:600; }
+  .todo { display:flex; align-items:center; gap:10px; padding:10px 0; border-top:1px solid var(--line); }
+  .todo:first-of-type { border-top:0; }
+  .todo input { width:16px; height:16px; accent-color:var(--accent); }
+  .todo small { margin-left:auto; color:var(--muted); }
+  /* editor */
+  .ed { display:grid; grid-template-columns:1fr 320px; gap:16px; }
+  .edtop { display:flex; align-items:center; gap:10px; margin-bottom:14px; }
+  .doctabs { display:flex; gap:4px; }
+  .doctabs span { padding:7px 12px; border-radius:8px; background:var(--card); border:1px solid var(--line); font-size:13px; cursor:pointer; }
+  .doctabs span.on { border-color:var(--accent); color:var(--accent); font-weight:600; }
+  .sheet { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:36px 48px; line-height:1.6; }
+  .sheet h2 { margin:0; font-size:24px; } .sheet .r { color:var(--muted); margin-bottom:16px; }
+  .sheet h5 { font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:var(--accent); margin:18px 0 6px; }
+  .blk { display:flex; gap:10px; align-items:flex-start; padding:6px 8px; margin:0 -8px; border-radius:8px; }
+  .blk:hover { background:var(--bg); }
+  .blk .t { flex:1; }
+  .blk .ai { all:unset; cursor:pointer; font-size:12px; padding:3px 8px; border-radius:6px; background:var(--accent-soft); color:var(--accent); font-weight:600; opacity:0; white-space:nowrap; }
+  .blk:hover .ai { opacity:1; }
+  .blk.rev { background:#fafaff; border:1px solid var(--accent); flex-direction:column; gap:8px; }
+  .blk.rev .t { width:100%; }
+  .acts { display:flex; gap:6px; }
+  .acts button { all:unset; cursor:pointer; padding:5px 12px; border-radius:6px; font-size:12px; font-weight:600; border:1px solid var(--line); background:#fff; }
+  .acts .ok { background:var(--offer); color:#fff; border-color:var(--offer); }
+  .acts .hint { margin-left:auto; color:var(--muted); font-size:12px; align-self:center; }
+  ins { background:var(--add); color:var(--add-ink); text-decoration:none; padding:1px 2px; border-radius:3px; }
+  del { background:var(--del); color:var(--del-ink); padding:1px 2px; border-radius:3px; }
+  .ring { width:86px; height:86px; border-radius:50%; background:conic-gradient(var(--offer) 0 72%, var(--line) 0); display:grid; place-items:center; margin:0 auto 8px; }
+  .ring b { width:68px; height:68px; border-radius:50%; background:#fff; display:grid; place-items:center; font-size:20px; }
+  .bucket { border:2px dashed var(--accent); border-radius:12px; padding:12px; background:var(--accent-soft); }
+  .bucket .file { background:#fff; cursor:grab; }
+</style>
+</head>
+<body>
+<header>
+  <div class="logo"><i></i>easy cv</div>
+  <div class="tabs">
+    <button data-v="board" class="on">Board</button>
+    <button data-v="dash">Dashboard</button>
+    <button data-v="editor">Editor</button>
+    <button>Templates</button>
+    <button>Settings</button>
+  </div>
+  <div class="sp"></div>
+  <div class="search">Search jobs, docs…</div>
+  <button class="btn pri">+ Add job</button>
+</header>
+
+<!-- BOARD -->
+<section class="view on" id="view-board">
+  <h1>Applications</h1><p class="sub">Drag cards between columns to change status. Click a card to open it.</p>
+  <div class="board">
+    <div class="col"><div class="colh"><span class="bar" style="background:var(--saved)"></span>Saved<span class="c">2</span></div>
+      <div class="card" data-open><div class="co"><span class="av" style="background:#9b51e0">L</span>Lumen Health</div><div class="ti">Product Engineer</div><div class="meta"><span class="tg warn">Closes Mon</span><span class="tg">No docs yet</span></div></div>
+      <div class="card" data-open><div class="co"><span class="av" style="background:#56ccf2">O</span>Orbit Labs</div><div class="ti">Frontend Lead</div><div class="meta"><span class="tg">Remote</span></div></div>
+    </div>
+    <div class="col"><div class="colh"><span class="bar" style="background:var(--applied)"></span>Applied<span class="c">3</span></div>
+      <div class="card" data-open><div class="co"><span class="av" style="background:#2f80ed">H</span>Helix Bank</div><div class="ti">Full-stack Developer</div><div class="meta"><span class="tg warn">Follow up Fri</span><span class="tg">CV · CL</span></div></div>
+      <div class="card" data-open><div class="co"><span class="av" style="background:#333">A</span>Atlas Robotics</div><div class="ti">Software Engineer, Tools</div><div class="meta"><span class="tg">12 days</span><span class="tg">CV</span></div></div>
+      <div class="card" data-open><div class="co"><span class="av" style="background:#f2c94c">P</span>Pine & Co</div><div class="ti">React Developer</div><div class="meta"><span class="tg">3 days</span></div></div>
+    </div>
+    <div class="col"><div class="colh"><span class="bar" style="background:var(--interview)"></span>Interview<span class="c">1</span></div>
+      <div class="card" data-open><div class="co"><span class="av" style="background:#0f4c81">N</span>Nordwind Logistics</div><div class="ti">Senior Frontend Engineer</div><div class="meta"><span class="tg ok">Thu 14:00</span><span class="tg">Round 2</span></div></div>
+    </div>
+    <div class="col"><div class="colh"><span class="bar" style="background:var(--offer)"></span>Offer<span class="c">1</span></div>
+      <div class="card" data-open><div class="co"><span class="av" style="background:#27ae60">M</span>Mosaic Media</div><div class="ti">Web Engineer</div><div class="meta"><span class="tg ok">€72k</span><span class="tg">Reply by Nov 5</span></div></div>
+    </div>
+    <div class="col"><div class="colh"><span class="bar" style="background:var(--rejected)"></span>Rejected<span class="c">4</span></div>
+      <div class="card" data-open><div class="co"><span class="av" style="background:#eb5757">K</span>Kiko Studio</div><div class="ti">Frontend Developer</div><div class="meta"><span class="tg">After screen</span></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- DASHBOARD -->
+<section class="view" id="view-dash">
+  <h1>Dashboard</h1><p class="sub">Last 8 weeks</p>
+  <div class="kpis">
+    <div class="kpi"><div class="n">24</div><div class="l">Applied</div><div class="d">+6 this week</div></div>
+    <div class="kpi"><div class="n">5</div><div class="l">Interviews</div><div class="d">+1</div></div>
+    <div class="kpi"><div class="n">1</div><div class="l">Offers</div></div>
+    <div class="kpi"><div class="n">21%</div><div class="l">Response rate</div></div>
+    <div class="kpi"><div class="n">6.5d</div><div class="l">Avg. time to reply</div></div>
+  </div>
+  <div class="g2">
+    <div class="pnl"><h3>Funnel</h3>
+      <div class="funnel">
+        <div><span>Saved</span><i style="width:100%;background:var(--saved)">31</i></div>
+        <div><span>Applied</span><i style="width:77%;background:var(--applied)">24</i></div>
+        <div><span>Replied</span><i style="width:30%;background:var(--accent)">9</i></div>
+        <div><span>Interview</span><i style="width:16%;background:var(--interview)">5</i></div>
+        <div><span>Offer</span><i style="width:6%;background:var(--offer)">1</i></div>
+      </div>
+    </div>
+    <div class="pnl"><h3>To do</h3>
+      <div class="todo"><input type="checkbox"> Prepare for Nordwind round 2<small>Thu</small></div>
+      <div class="todo"><input type="checkbox"> Follow up with Helix Bank<small>Fri</small></div>
+      <div class="todo"><input type="checkbox"> Reply to Mosaic Media offer<small>Nov 5</small></div>
+      <div class="todo"><input type="checkbox"> Apply to Lumen Health before it closes<small>Mon</small></div>
+    </div>
+  </div>
+</section>
+
+<!-- EDITOR -->
+<section class="view" id="view-editor">
+  <div class="edtop">
+    <span style="color:var(--muted)">Nordwind Logistics /</span>
+    <div class="doctabs"><span class="on">CV · EN</span><span>Cover letter</span><span>+ Add</span></div>
+    <div class="sp"></div>
+    <button class="btn">History (v4)</button><button class="btn">Theme ▾</button><button class="btn">Preview PDF</button><button class="btn pri">✨ Tailor all</button>
+  </div>
+  <div class="ed">
+    <div class="sheet">
+      <h2>Alex Example</h2><div class="r">Frontend Engineer · Berlin · sample@mail.com</div>
+      <h5>Profile</h5>
+      <div class="blk"><span class="t">Frontend engineer with 7 years of experience building web applications for fintech and e-commerce companies.</span><button class="ai">✨ Tailor</button></div>
+      <h5>Experience</h5>
+      <div class="blk"><span class="t"><b>Lead Frontend Developer</b>, Parcelio GmbH · 2021–now</span></div>
+      <div class="blk rev"><span class="t">• <del>Worked on the frontend of the tracking dashboard.</del> <ins>Led the React/TypeScript rebuild of a shipment-tracking dashboard used by 1,200 partners, mentoring 3 engineers.</ins></span>
+        <div class="acts"><button class="ok">✓ Accept</button><button>✕ Reject</button><button>✎ Edit</button><button>↻ Try again</button><span class="hint">Why: matches “architecture ownership” and “mentoring”</span></div></div>
+      <div class="blk"><span class="t">• Built a shared component library used across 4 products, with WCAG AA accessibility.</span><button class="ai">✨ Tailor</button></div>
+      <div class="blk"><span class="t">• Introduced GraphQL to replace 30+ REST endpoints, cutting page load by 40%.</span><button class="ai">✨ Tailor</button></div>
+      <div class="blk"><span class="t"><b>Frontend Developer</b>, Shoply · 2018–2021</span></div>
+      <div class="blk"><span class="t">• Developed checkout features in Vue and later React for 2M monthly users.</span><button class="ai">✨ Tailor</button></div>
+      <h5>Skills</h5>
+      <div class="blk"><span class="t">React, TypeScript, Vue, GraphQL, Node.js, Jest, Playwright, Figma. German (B2), English (C2).</span><button class="ai">✨ Tailor</button></div>
+    </div>
+    <div>
+      <div class="box" style="background:#fff;text-align:center"><h4>Match score</h4><div class="ring"><b>72%</b></div>
+        <div><span class="kw">React</span><span class="kw">TypeScript</span><span class="kw">Mentoring</span><span class="kw">GraphQL</span><span class="kw miss">Design systems</span><span class="kw miss">German B2</span></div></div>
+      <div class="bucket"><h4 style="margin:0 0 10px;font-size:12px;color:var(--accent);text-transform:uppercase;letter-spacing:.06em">Final bucket · drag out</h4>
+        <div class="file">⠿ <b>Alex_Example_CV_Nordwind.pdf</b></div>
+        <div class="file">⠿ <b>Alex_Example_Cover_Nordwind.pdf</b></div>
+        <div class="file">⠿ <b>Certificates.pdf</b></div>
+        <div style="display:flex;gap:6px;margin-top:10px"><button class="btn" style="flex:1;text-align:center">Zip</button><button class="btn pri" style="flex:1;text-align:center">Merge PDF</button></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="scrim"></div>
+<aside class="drawer">
+  <div style="display:flex;justify-content:space-between;align-items:center"><span style="color:var(--muted)">Nordwind Logistics</span><button class="btn" id="close">✕</button></div>
+  <h1 style="margin-top:8px">Senior Frontend Engineer</h1>
+  <p class="sub" style="margin:0">Hamburg (hybrid) · €75–90k · <a href="#" style="color:var(--accent)">posting ↗</a></p>
+  <div class="seg"><span>Saved</span><span>Applied</span><span class="on">Interview</span><span>Offer</span><span>Rejected</span></div>
+  <div class="box"><h4>Key requirements</h4><span class="kw">React</span><span class="kw">TypeScript</span><span class="kw">Accessibility</span><span class="kw">Mentoring</span><span class="kw">Design systems</span><span class="kw">GraphQL</span><span class="kw">German B2</span></div>
+  <div class="box"><h4>Documents</h4>
+    <div class="file">📄 <b>CV · EN (v4)</b><span class="pct">72%</span></div>
+    <div class="file">📄 <b>Cover letter (v2)</b><span class="pct">64%</span></div>
+    <div class="file">📎 <b>Certificates.pdf</b></div>
+    <button class="btn pri" data-v="editor" style="display:block;text-align:center;margin-top:8px">Open in editor</button>
+  </div>
+  <div class="box"><h4>Timeline</h4><div class="timeline">
+    <div>Oct 28: Interview round 2 scheduled for Oct 30</div><div>Oct 21: Interview round 1</div><div>Oct 14: Applied with CV v3 + Cover v2</div><div>Oct 12: Saved from link (posting complete ✓)</div></div></div>
+</aside>
+
+<script>
+  const show = v => {
+    document.body.classList.remove('open');
+    document.querySelectorAll('.view').forEach(s => s.classList.toggle('on', s.id === 'view-' + v));
+    document.querySelectorAll('.tabs button').forEach(b => b.classList.toggle('on', b.dataset.v === v));
+  };
+  document.querySelectorAll('[data-v]').forEach(el => el.addEventListener('click', () => show(el.dataset.v)));
+  document.querySelectorAll('[data-open]').forEach(el => el.addEventListener('click', () => document.body.classList.add('open')));
+  document.querySelector('.scrim').onclick = document.getElementById('close').onclick = () => document.body.classList.remove('open');
+</script>
+</body>
+</html>

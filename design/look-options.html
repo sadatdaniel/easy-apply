@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Easy Apply · look options</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&family=Roboto:wght@400;500;700&family=Fira+Sans:wght@600;700&display=swap" rel="stylesheet">
+<style>
+/* ---------- the three directions: only tokens differ ---------- */
+.look-a { /* Graphite — neutral greys, cobalt accent, Inter. Calm, desktop-tool feel. */
+  --bg:#f4f5f7; --side:#eceef1; --pane:#ffffff; --work:#f4f5f7; --ink:#15171c; --muted:#6b7280; --line:#e2e5ea;
+  --accent:#2f5bea; --accent-ink:#fff; --accent-soft:#e8eefe; --sel:#e3e7ee; --hover:rgba(15,23,42,.045);
+  --side-ink:var(--ink); --side-muted:var(--muted); --side-line:var(--line); --side-on:#2f5bea; --side-on-ink:#fff;
+  --font:'Inter', system-ui, sans-serif; --head:'Inter', system-ui, sans-serif; --head-w:650; --mono:ui-monospace, 'SF Mono', Consolas, monospace;
+  --radius:8px; --shadow:0 1px 2px rgba(16,24,40,.06), 0 6px 20px rgba(16,24,40,.06);
+  --add:#e7f6ec; --add-ink:#17663a; --del:#fdecec; --del-ink:#b42318; --note:#fff7e0;
+}
+.look-b { /* Slate & Teal — cool slate, teal accent, IBM Plex. Technical, precise. */
+  --bg:#f2f4f6; --side:#e9edf1; --pane:#fbfcfd; --work:#eef1f4; --ink:#0f1b2a; --muted:#5d6b7c; --line:#d9e0e7;
+  --accent:#0d7c80; --accent-ink:#fff; --accent-soft:#dff1f1; --sel:#dde4ea; --hover:rgba(15,27,42,.05);
+  --side-ink:var(--ink); --side-muted:var(--muted); --side-line:var(--line); --side-on:#0f1b2a; --side-on-ink:#fff;
+  --font:'IBM Plex Sans', system-ui, sans-serif; --head:'IBM Plex Sans', system-ui, sans-serif; --head-w:600; --mono:'IBM Plex Mono', monospace;
+  --radius:4px; --shadow:0 1px 0 rgba(15,27,42,.06), 0 4px 14px rgba(15,27,42,.07);
+  --add:#e2f3ea; --add-ink:#11683f; --del:#fbe7e6; --del-ink:#a5281d; --note:#fff4d6;
+}
+.look-c { /* Midnight — dark sidebars, bright white workspace, violet accent, Geist. Modern, focused. */
+  --bg:#ffffff; --side:#14161b; --pane:#1b1e25; --work:#f6f6f8; --ink:#16171b; --muted:#6c6f7a; --line:#e6e6ea;
+  --accent:#5b47e0; --accent-ink:#fff; --accent-soft:#eeebfd; --sel:#2a2e38; --hover:rgba(255,255,255,.05);
+  --side-ink:#e8e9ee; --side-muted:#8b8f9c; --side-line:#262a33; --side-on:#5b47e0; --side-on-ink:#fff;
+  --font:'Geist', system-ui, sans-serif; --head:'Geist', system-ui, sans-serif; --head-w:600; --mono:'Geist Mono', monospace;
+  --radius:7px; --shadow:0 1px 2px rgba(10,10,20,.06), 0 8px 24px rgba(10,10,20,.08);
+  --add:#e6f6ec; --add-ink:#157a42; --del:#fdeceb; --del-ink:#b3261e; --note:#fff6dc;
+}
+
+/* ---------- page ---------- */
+* { box-sizing:border-box; }
+body { margin:0; background:#d9dbe0; font:14px/1.45 system-ui, sans-serif; color:#15171c; }
+.intro { max-width:1180px; margin:0 auto; padding:28px 16px 6px; }
+.intro h1 { margin:0 0 6px; font:650 24px/1.2 Inter, system-ui, sans-serif; }
+.intro p { margin:0; color:#4b5260; max-width:760px; }
+.tabs { position:sticky; top:0; z-index:5; display:flex; gap:6px; justify-content:center; padding:12px 16px; background:rgba(217,219,224,.92); backdrop-filter:blur(6px); flex-wrap:wrap; }
+.tabs button { all:unset; cursor:pointer; padding:7px 14px; border-radius:8px; background:#fff; border:1px solid #c7cad1; font:500 13px Inter, sans-serif; }
+.tabs button.on { background:#15171c; color:#fff; border-color:#15171c; }
+.option { max-width:1180px; margin:0 auto 34px; padding:0 16px; }
+.option h2 { font:650 17px Inter, system-ui, sans-serif; margin:18px 0 4px; }
+.option .why { margin:0 0 10px; color:#4b5260; font-size:13.5px; }
+.swatches { display:flex; gap:6px; margin:0 0 12px; flex-wrap:wrap; }
+.swatches span { display:flex; align-items:center; gap:6px; font:12px Inter, sans-serif; color:#4b5260; background:#fff; border-radius:6px; padding:3px 8px 3px 3px; }
+.swatches i { width:18px; height:18px; border-radius:4px; border:1px solid rgba(0,0,0,.1); }
+.frame { overflow-x:auto; border-radius:12px; box-shadow:0 12px 40px rgba(0,0,0,.18); }
+
+/* ---------- the app mock (same markup for all three) ---------- */
+.app { width:1148px; height:640px; display:flex; flex-direction:column; font-family:var(--font); font-size:13px; color:var(--ink); background:var(--bg); overflow:hidden; }
+.top { height:48px; flex:none; display:flex; align-items:center; gap:16px; padding:0 14px; background:var(--side); color:var(--side-ink); border-bottom:1px solid var(--side-line); }
+.brand { font:var(--head-w) 16px var(--head); letter-spacing:-.01em; }
+.brand span { color:var(--accent); }
+.seg { display:flex; gap:2px; padding:3px; border-radius:var(--radius); background:var(--hover); }
+.seg b { font-weight:500; padding:4px 11px; border-radius:calc(var(--radius) - 2px); color:var(--side-muted); }
+.seg b.on { background:var(--pane); color:var(--side-ink); box-shadow:0 1px 2px rgba(0,0,0,.12); }
+.look-c .seg b.on { background:#2a2e38; }
+.crumbs { flex:1; color:var(--side-muted); white-space:nowrap; }
+.crumbs b { color:var(--side-ink); font-weight:500; }
+.chip { font-size:11.5px; padding:3px 9px; border-radius:999px; background:var(--add); color:var(--add-ink); }
+.look-c .chip { background:#1f3a2b; color:#7ee2a5; }
+.body { flex:1; display:flex; min-height:0; }
+.col { flex:none; display:flex; flex-direction:column; background:var(--side); color:var(--side-ink); border-right:1px solid var(--side-line); }
+.col.jobs { width:220px; }
+.col.steps { width:196px; background:var(--pane); }
+.look-a .col.steps, .look-b .col.steps { background:var(--pane); }
+.lbl { padding:12px 12px 5px; font-size:10.5px; letter-spacing:.07em; text-transform:uppercase; color:var(--side-muted); font-family:var(--mono); }
+.look-a .lbl { font-family:var(--font); font-weight:600; }
+.job { margin:1px 6px; padding:7px 8px; border-radius:var(--radius); display:flex; gap:8px; align-items:flex-start; }
+.job.on { background:var(--side-on); color:var(--side-on-ink); }
+.job .t { flex:1; min-width:0; } .job .t div { font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.job small { color:var(--side-muted); font-size:11.5px; } .job.on small { color:inherit; opacity:.8; }
+.dot { width:8px; height:8px; border-radius:50%; margin-top:5px; flex:none; }
+.step { margin:1px 6px; padding:6px 8px; border-radius:var(--radius); display:flex; gap:9px; align-items:center; color:var(--side-ink); }
+.step i { font-style:normal; width:19px; height:19px; border-radius:50%; display:grid; place-items:center; font-size:10.5px; font-family:var(--mono); background:var(--hover); color:var(--side-muted); flex:none; }
+.step.done i { background:var(--add-ink); color:#fff; }
+.step.on { background:var(--sel); } .step.on i { background:var(--accent); color:#fff; }
+.look-c .step.on { background:#2a2e38; }
+.file { margin:1px 6px; padding:5px 8px; display:flex; gap:8px; align-items:center; color:var(--side-ink); font-size:12.5px; }
+.file code { font:600 9px var(--mono); color:var(--accent); width:22px; }
+.look-c .file code { color:#a99cff; }
+.main { flex:1; min-width:0; display:flex; flex-direction:column; background:var(--work); }
+.edbar { display:flex; gap:6px; align-items:center; padding:8px 14px; background:var(--pane); border-bottom:1px solid var(--line); }
+.look-c .edbar { background:#fff; }
+.dtab { padding:4px 10px; border-radius:var(--radius); color:var(--muted); font-family:var(--mono); font-size:12px; }
+.dtab.on { background:var(--sel); color:var(--ink); }
+.look-c .dtab.on { background:#eeeef2; }
+.sp { flex:1; }
+.saved { color:var(--muted); font-size:12px; }
+.btn { padding:5px 11px; border-radius:var(--radius); background:#fff; border:1px solid var(--line); font-weight:500; font-size:12px; white-space:nowrap; }
+.btn.pri { background:var(--accent); border-color:var(--accent); color:var(--accent-ink); }
+.work { flex:1; display:grid; grid-template-columns:minmax(0,1fr) 250px; gap:18px; padding:14px 18px; min-height:0; overflow:hidden; }
+.fmt { display:flex; gap:4px; align-items:center; padding:3px 4px; font-size:10.5px !important; background:#fff; border:1px solid var(--line); border-radius:var(--radius); box-shadow:var(--shadow); margin-bottom:12px; font-size:11.5px; }
+.fmt .g { display:flex; border:1px solid var(--line); border-radius:calc(var(--radius) - 2px); overflow:hidden; }
+.fmt .g b { font-weight:500; padding:2px 5px; white-space:nowrap; } .fmt .g b + b { border-left:1px solid var(--line); }
+.fmt .g b.on { background:var(--ink); color:#fff; }
+.fmt .g b.off { color:#b4b8c0; }
+.page { background:#fff; box-shadow:var(--shadow); padding:30px 34px; font:10.5px/1.38 Roboto, sans-serif; color:#222; height:460px; overflow:hidden; position:relative; }
+.page h3 { font:700 23px 'Fira Sans', sans-serif; margin:0 0 2px; color:#111; }
+.page .ct { display:flex; justify-content:space-between; font:600 10px 'Fira Sans', sans-serif; border-bottom:1.3px solid #999; padding-bottom:5px; }
+.page h4 { font:700 12px 'Fira Sans', sans-serif; text-transform:uppercase; margin:13px 0 5px; color:#111; }
+.page .eh { display:flex; justify-content:space-between; font:600 10.5px 'Fira Sans', sans-serif; }
+.page ul { margin:3px 0 7px; padding-left:16px; }
+.page li.hl { background:var(--note); outline:2px solid #f0d78a; outline-offset:1px; border-radius:2px; }
+.side { display:flex; flex-direction:column; gap:10px; }
+.card { background:#fff; border:1px solid var(--line); border-radius:calc(var(--radius) + 2px); padding:12px; box-shadow:0 1px 2px rgba(0,0,0,.03); }
+.card h5 { margin:0 0 7px; font:600 10.5px var(--font); text-transform:uppercase; letter-spacing:.06em; color:var(--muted); }
+.look-b .card h5, .look-c .card h5 { font-family:var(--mono); font-weight:500; }
+.meter { height:6px; border-radius:3px; background:var(--sel); overflow:hidden; margin:6px 0 4px; }
+.look-c .meter { background:#ececf1; }
+.meter i { display:block; height:100%; width:58%; background:var(--accent); }
+.big { font:var(--head-w) 22px var(--head); letter-spacing:-.02em; }
+.kw { display:inline-block; font-size:11px; padding:1px 7px; border-radius:999px; margin:3px 3px 0 0; background:var(--del); color:var(--del-ink); }
+.rv { border-left:3px solid var(--accent); }
+.rv .d { font-size:12.5px; line-height:1.55; }
+.rv del { background:var(--del); color:var(--del-ink); }
+.rv ins { background:var(--add); color:var(--add-ink); text-decoration:none; }
+.rv .why { color:var(--muted); font-size:11.5px; margin:6px 0 8px; }
+.rv .bs { display:flex; gap:5px; }
+.toast { position:absolute; left:50%; bottom:16px; transform:translateX(-50%); background:var(--ink); color:#fff; padding:7px 12px; border-radius:var(--radius); font-size:12px; box-shadow:var(--shadow); }
+.look-c .toast { background:#14161b; }
+.mockwrap { position:relative; }
+.hide { display:none; }
+</style>
+</head>
+<body>
+<div class="intro">
+  <h1>Three looks for Easy Apply</h1>
+  <p>Same app, same layout, three sets of colours and fonts. Only the app around your documents changes; resume themes (Classic, Sidebar, Serif, Academic) stay as they are. Switch with the tabs, or scroll to compare.</p>
+</div>
+<div class="tabs" id="tabs">
+  <button data-show="all" class="on">All three</button>
+  <button data-show="a">A · Graphite</button>
+  <button data-show="b">B · Slate &amp; Teal</button>
+  <button data-show="c">C · Midnight</button>
+</div>
+
+<template id="mock">
+  <div class="mockwrap"><div class="app">
+    <div class="top">
+      <div class="brand">easy<span>·</span>apply</div>
+      <div class="seg"><b class="on">Applications</b><b>Templates</b><b>Extras</b><b>Profile</b><b>Tracker</b><b>Settings</b></div>
+      <div class="crumbs">Applications › <b>Hafenblick Analytics</b> › Edit documents</div>
+      <span class="chip">✨ Ollama · e2b-text-128k</span>
+    </div>
+    <div class="body">
+      <div class="col jobs">
+        <div class="lbl">October 2026</div>
+        <div class="job on"><span class="dot" style="background:#e0a526"></span><span class="t"><div>Hafenblick Analytics</div><small>Junior Data Engineer · Interview</small></span></div>
+        <div class="job"><span class="dot" style="background:#3d7ea6"></span><span class="t"><div>Nordwind Logistics</div><small>Data Engineer · Applied</small></span></div>
+        <div class="job"><span class="dot" style="background:#9aa0aa"></span><span class="t"><div>Elbe Health</div><small>BI Analyst · Saved</small></span></div>
+        <div class="lbl">September 2026</div>
+        <div class="job"><span class="dot" style="background:#c0533b"></span><span class="t"><div>Kranhaus Software</div><small>Python Developer · Rejected</small></span></div>
+      </div>
+      <div class="col steps">
+        <div class="lbl">Steps</div>
+        <div class="step done"><i>✓</i>Posting &amp; details</div>
+        <div class="step done"><i>✓</i>Choose documents</div>
+        <div class="step on"><i>3</i>Edit documents</div>
+        <div class="step"><i>4</i>Add extras</div>
+        <div class="step"><i>5</i>Final bucket</div>
+        <div class="lbl">Files in this folder</div>
+        <div class="file"><code>MD</code>posting.md</div>
+        <div class="file"><code>MD</code>cv-en.md</div>
+        <div class="file"><code>MD</code>cover-en.md</div>
+        <div class="file"><code>PDF</code>certificate.pdf</div>
+      </div>
+      <div class="main">
+        <div class="edbar"><span class="dtab on">cv-en.md</span><span class="dtab">cover-en.md</span><span class="sp"></span><span class="saved">Saved</span><span class="btn">Theme: Classic</span><span class="btn">Print / PDF</span><span class="btn pri">✨ Tailoring: on</span></div>
+        <div class="work">
+          <div>
+            <div class="fmt"><span class="g"><b>Text</b><b class="on">Bullet</b><b>Section</b><b>Entry</b></span><span class="g"><b>B</b><b><i>I</i></b><b>Link</b></span><span class="g"><b>A−</b><b>100%</b><b>A+</b></span><span class="g"><b>Lines</b></span><span class="g"><b>Left</b><b>Justify</b></span><span class="g"><b>Margins</b></span></div>
+            <div class="page">
+              <h3>Robin Test</h3>
+              <div style="color:#555;margin-bottom:3px">Data Engineer</div>
+              <div class="ct"><span>+49 151 000000</span><span>robin@example.com</span><span>github.com/robin</span><span>Hamburg</span></div>
+              <p style="margin:9px 0 0">Data engineer with three years of building Python and SQL pipelines for operations teams. Focus on reliable data, clear reporting and automation.</p>
+              <h4>Skills</h4>
+              <ul><li><b>Languages:</b> Python, SQL, Bash</li><li><b>Tools:</b> PostgreSQL, Git, Docker, GCP</li></ul>
+              <h4>Professional Experience</h4>
+              <div class="eh"><span>Data and Operations Analyst</span><span>12/2024 – 01/2026</span></div>
+              <div style="font-weight:500">Harbour Foods, Hamburg</div>
+              <ul><li class="hl">Developed SQL queries and analytical workflows to analyse operational data</li><li>Automated weekly sales reports in Python, saving four hours a week</li></ul>
+              <div class="eh"><span>Junior Developer</span><span>09/2022 – 11/2024</span></div>
+              <div style="font-weight:500">Kiel Apps GmbH, Kiel</div>
+              <ul><li>Built and maintained REST APIs in Flask for a mobile app</li></ul>
+            </div>
+          </div>
+          <div class="side">
+            <div class="card rv"><h5>Suggested change</h5>
+              <div class="d">Developed <del>SQL queries and analytical workflows</del> <ins>SQL pipelines and PostgreSQL data models</ins> to analyse operational data</div>
+              <div class="why">Uses the posting's words for work you already did.</div>
+              <div class="bs"><span class="btn pri">Accept</span><span class="btn">Edit</span><span class="btn">Retry</span><span class="sp"></span><span class="btn">Reject</span></div>
+            </div>
+            <div class="card"><h5>Keyword match</h5><div class="meter"><i></i></div><span class="big">58%</span>
+              <div style="margin-top:6px;color:var(--muted);font-size:11.5px">Not mentioned yet:<br><span class="kw">Airflow</span><span class="kw">ETL</span><span class="kw">German B2</span></div></div>
+            <div class="card"><h5>Versions</h5><div style="display:flex;justify-content:space-between;font-size:12px"><span>27 Oct, 14:02</span><span style="color:var(--muted)">view</span></div><div style="display:flex;justify-content:space-between;font-size:12px;margin-top:5px"><span>27 Oct, 11:40</span><span style="color:var(--muted)">view</span></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div><div class="toast">Version saved</div></div>
+</template>
+
+<section class="option" data-opt="a">
+  <h2>A · Graphite</h2>
+  <p class="why">Neutral greys with one cobalt-blue accent, Inter throughout. Calm and familiar, like a well-made desktop tool; the documents carry the colour.</p>
+  <div class="swatches"><span><i style="background:#f4f5f7"></i>#f4f5f7</span><span><i style="background:#15171c"></i>#15171c</span><span><i style="background:#2f5bea"></i>#2f5bea</span><span><i style="background:#e8eefe"></i>#e8eefe</span><span style="padding-left:8px">Inter</span></div>
+  <div class="frame look-a"></div>
+</section>
+<section class="option" data-opt="b">
+  <h2>B · Slate &amp; Teal</h2>
+  <p class="why">Cool slate tones, a deep teal accent and IBM Plex Sans with Plex Mono for labels and file names. Squarer corners; precise and a little technical.</p>
+  <div class="swatches"><span><i style="background:#f2f4f6"></i>#f2f4f6</span><span><i style="background:#0f1b2a"></i>#0f1b2a</span><span><i style="background:#0d7c80"></i>#0d7c80</span><span><i style="background:#dff1f1"></i>#dff1f1</span><span style="padding-left:8px">IBM Plex Sans · Plex Mono</span></div>
+  <div class="frame look-b"></div>
+</section>
+<section class="option" data-opt="c">
+  <h2>C · Midnight</h2>
+  <p class="why">Dark side columns frame a bright white workspace, so the page stands out. Violet accent, Geist with Geist Mono. The most modern and focused of the three.</p>
+  <div class="swatches"><span><i style="background:#14161b"></i>#14161b</span><span><i style="background:#ffffff"></i>#ffffff</span><span><i style="background:#5b47e0"></i>#5b47e0</span><span><i style="background:#eeebfd"></i>#eeebfd</span><span style="padding-left:8px">Geist · Geist Mono</span></div>
+  <div class="frame look-c"></div>
+</section>
+
+<script>
+  const tpl = document.getElementById('mock');
+  document.querySelectorAll('.frame').forEach(f => f.appendChild(tpl.content.cloneNode(true)));
+  const tabs = document.getElementById('tabs');
+  function show(k) {
+    tabs.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.show === k));
+    document.querySelectorAll('.option').forEach(o => o.classList.toggle('hide', k !== 'all' && o.dataset.opt !== k));
+    history.replaceState(null, '', k === 'all' ? location.pathname : '#' + k);
+  }
+  tabs.addEventListener('click', e => { const b = e.target.closest('button'); if (b) show(b.dataset.show); });
+  const h = location.hash.slice(1); if (['a', 'b', 'c'].includes(h)) show(h);
+</script>
+</body>
+</html>

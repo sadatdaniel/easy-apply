@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Design Directions</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root { --bg:#f6f6f4; --card:#fff; --ink:#1b1b1f; --muted:#6b6b75; --line:#e4e4e0; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:Inter, system-ui, sans-serif; background:var(--bg); color:var(--ink); }
+  main { max-width:1080px; margin:0 auto; padding:56px 16px; }
+  h1 { font-size:28px; margin:0 0 8px; letter-spacing:-0.02em; }
+  p.lead { color:var(--muted); margin:0 0 36px; max-width:640px; line-height:1.5; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(300px,1fr)); gap:20px; }
+  a.card { display:block; text-decoration:none; color:inherit; background:var(--card); border:1px solid var(--line);
+    border-radius:14px; overflow:hidden; transition:transform .15s, box-shadow .15s; }
+  a.card:hover { transform:translateY(-3px); box-shadow:0 12px 30px rgba(0,0,0,.08); }
+  .thumb { height:170px; display:flex; gap:6px; padding:14px; }
+  .body { padding:18px 20px 22px; }
+  .body h2 { margin:0 0 6px; font-size:18px; }
+  .body p { margin:0; color:var(--muted); font-size:14px; line-height:1.5; }
+  .tag { display:inline-block; font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); margin-bottom:8px; }
+  /* thumbs */
+  .a { background:#f3efe7; } .a .s { width:22%; background:#e8e1d3; border-radius:6px; } .a .p { flex:1; background:#fffdf8; border-radius:4px; box-shadow:0 2px 8px rgba(80,60,20,.12); margin:0 10px; }
+  .a .n { width:24%; display:flex; flex-direction:column; gap:6px; } .a .n i { height:34px; background:#fde9b8; border-radius:4px; }
+  .b { background:#eef0fb; } .b .col { flex:1; display:flex; flex-direction:column; gap:6px; } .b .col b { height:10px; border-radius:3px; background:#c9cdf4; } .b .col i { height:34px; background:#fff; border-radius:6px; box-shadow:0 1px 3px rgba(40,40,120,.12); }
+  .c { background:#15161b; } .c .l { width:20%; background:#1f2028; border-radius:4px; } .c .m { flex:1; background:#1b1c23; border-radius:4px; border:1px solid #2c2d38; } .c .r { width:28%; background:#1f2028; border-radius:4px; border-left:2px solid #7c5cff; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Easy CV Tracker: pick a direction</h1>
+  <p class="lead">Each direction shows the same three screens with the same sample data: <b>Dashboard</b>, <b>Job</b>, and <b>Editor</b> (AI suggestions, diff review, final bucket). Click through and decide what feels natural. Mixing parts is fine, e.g. A's editor with B's dashboard.</p>
+  <div class="grid">
+    <a class="card" href="d-paper-flow.html" style="grid-column:1/-1">
+      <div class="thumb a"><div class="s" style="width:14%"></div><div class="s" style="width:13%;background:#f3ece0"></div><div class="s" style="width:3%;background:#e0d6c4"></div><div class="s" style="width:3%;background:#e0d6c4"></div><div class="p" style="margin:0 4px"></div><div class="s" style="width:10%;background:repeating-linear-gradient(135deg,#f3efe7 0 6px,#e8e1d3 6px 12px)"></div></div>
+      <div class="body"><span class="tag">Direction D · new</span><h2>Paper Flow</h2><p>Paper's look, built around files. Applications are folders, Finder-style. Each job is a row of panes, left to right: posting, documents, edit, extras, final bucket. Finished steps fold into slim spines, and the tracker is a secondary tab.</p></div>
+    </a>
+    <a class="card" href="resume-themes.html" style="grid-column:1/-1">
+      <div class="thumb a"><div class="p" style="margin:0 6px"></div><div class="p" style="margin:0 6px;background:linear-gradient(90deg,#eef4f3 0 32%,#fff 32%)"></div><div class="p" style="margin:0 6px"></div></div>
+      <div class="body"><span class="tag">Resume themes · your CV</span><h2>Classic, Sidebar, Serif</h2><p>Your real English CV and Lumen Labs cover letter in three designs. Classic recreates your current CV and is the default. Each theme is one CSS file, and page breaks are marked.</p></div>
+    </a>
+    <a class="card" href="a-paper.html">
+      <div class="thumb a"><div class="s"></div><div class="p"></div><div class="n"><i></i><i></i></div></div>
+      <div class="body"><span class="tag">Direction A</span><h2>Paper</h2><p>Calm and document-first. Warm tones, the CV looks like a real page, and AI suggestions sit in the margin like review comments.</p></div>
+    </a>
+    <a class="card" href="b-board.html">
+      <div class="thumb b"><div class="col"><b></b><i></i><i></i></div><div class="col"><b></b><i></i></div><div class="col"><b></b><i></i><i></i><i></i></div><div class="col"><b></b><i></i></div></div>
+      <div class="body"><span class="tag">Direction B</span><h2>Board</h2><p>Pipeline-first. A kanban of applications is home base, jobs open in a side drawer, and the editor shows inline red/green diffs.</p></div>
+    </a>
+    <a class="card" href="c-studio.html">
+      <div class="thumb c"><div class="l"></div><div class="m"></div><div class="r"></div></div>
+      <div class="body"><span class="tag">Direction C</span><h2>Studio</h2><p>Dense three-pane workspace, dark by default. Job list, document and AI panel are always visible, with a ⌘K command bar for speed.</p></div>
+    </a>
+  </div>
+</main>
+</body>
+</html>

@@ -1,0 +1,574 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Paper Flow</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#f4f0e8; --side:#ebe5d8; --paper:#fffdf8; --ink:#2a2620; --muted:#837a6b; --line:#ddd4c3;
+    --accent:#b4572e; --accent-soft:#f6e2d6; --note:#fdf0c8; --note-line:#ecd38a; --sel:#e6dccb;
+    --add:#e3f1dc; --add-ink:#2f6b1f; --del:#f7dcd6; --del-ink:#9a2f1c;
+    --s-saved:#a39a88; --s-applied:#3d7ea6; --s-interview:#c08a1e; --s-offer:#4d8a3a; --s-rejected:#b5543b;
+  }
+  * { box-sizing:border-box; }
+  html, body { height:100%; }
+  body { margin:0; font-family:Inter, system-ui, sans-serif; background:var(--bg); color:var(--ink); font-size:13.5px; display:flex; flex-direction:column; overflow:hidden; }
+  button { font:inherit; color:inherit; }
+
+  /* window chrome */
+  .titlebar { height:48px; flex:none; display:flex; align-items:center; gap:18px; padding:0 16px; background:var(--side); border-bottom:1px solid var(--line); }
+  .lights { display:flex; gap:7px; } .lights i { width:12px; height:12px; border-radius:50%; background:#e0675a; } .lights i:nth-child(2){background:#e7b53f} .lights i:nth-child(3){background:#6cbf55}
+  .brand { font-family:Fraunces, serif; font-size:17px; } .brand span { color:var(--accent); }
+  .seg { display:flex; background:rgba(0,0,0,.05); border-radius:8px; padding:3px; }
+  .seg button { all:unset; cursor:pointer; padding:5px 12px; border-radius:6px; color:var(--muted); font-weight:500; }
+  .seg button.on { background:var(--paper); color:var(--ink); box-shadow:0 1px 2px rgba(60,40,10,.12); }
+  .crumbs { flex:1; display:flex; align-items:center; gap:6px; color:var(--muted); overflow:hidden; white-space:nowrap; }
+  .crumbs b { color:var(--ink); font-weight:500; }
+  .search { width:200px; padding:6px 10px; border-radius:7px; background:rgba(0,0,0,.05); color:var(--muted); }
+
+  /* columns */
+  .browser { flex:1; display:flex; min-height:0; }
+  .col { flex:none; display:flex; flex-direction:column; border-right:1px solid var(--line); min-height:0; background:var(--bg); overflow:hidden; transition:width .35s ease; }
+  .col-spine { display:none; writing-mode:vertical-rl; transform:rotate(180deg); align-self:center; padding:14px 0; color:var(--muted); font-weight:500; white-space:nowrap; cursor:pointer; }
+  .browser.compact .jobs { width:0; border:0; }
+  .browser.compact .files { width:46px; background:var(--side); cursor:pointer; }
+  .browser.compact .files > :not(.col-spine) { display:none; }
+  .browser.compact .files .col-spine { display:block; }
+  .col-h { height:40px; flex:none; display:flex; align-items:center; justify-content:space-between; padding:0 14px; font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); border-bottom:1px solid var(--line); }
+  .col-b { flex:1; overflow:auto; padding:6px; }
+  .jobs { width:236px; background:var(--side); }
+  .row { all:unset; box-sizing:border-box; width:100%; display:flex; align-items:center; gap:9px; padding:7px 9px; border-radius:7px; cursor:pointer; }
+  .row:hover { background:rgba(0,0,0,.04); }
+  .row.on { background:var(--accent); color:#fff; }
+  .row.on small { color:#fbe3d6; }
+  .row .tx { flex:1; min-width:0; } .row .tx div { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .row small { color:var(--muted); font-size:11.5px; }
+  .fold { width:20px; height:15px; border-radius:2px 4px 3px 3px; background:#d9a55a; position:relative; flex:none; }
+  .fold::before { content:""; position:absolute; top:-3px; left:0; width:9px; height:4px; background:#d9a55a; border-radius:2px 2px 0 0; }
+  .row.on .fold, .row.on .fold::before { background:#f8d2a8; }
+  .dot { width:7px; height:7px; border-radius:50%; flex:none; }
+  .chev { color:var(--muted); font-size:11px; } .row.on .chev { color:#fff; }
+  .newjob { all:unset; cursor:pointer; margin:8px; padding:8px; text-align:center; border-radius:8px; background:var(--accent); color:#fff; font-weight:600; }
+
+  /* job folder column */
+  .files { width:220px; }
+  .fi { all:unset; box-sizing:border-box; width:100%; display:flex; align-items:center; gap:10px; padding:7px 9px; border-radius:7px; cursor:pointer; }
+  .fi:hover { background:rgba(0,0,0,.04); }
+  .fi.on { background:var(--sel); }
+  .fi .ic { width:22px; height:27px; border-radius:2px; background:var(--paper); border:1px solid var(--line); font-size:7.5px; font-weight:700; color:var(--muted); display:grid; place-items:center; flex:none; }
+  .fi .ic.pdf { color:#b5543b; } .fi .ic.md { color:var(--accent); }
+  .fi .num { width:18px; height:18px; border-radius:50%; display:grid; place-items:center; font-size:10px; font-weight:700; background:var(--line); color:var(--muted); flex:none; }
+  .fi .num.done { background:var(--add-ink); color:#fff; } .fi.on .num { background:var(--accent); color:#fff; }
+  .grp { padding:12px 9px 4px; font-size:10.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); }
+
+  /* pane stack */
+  .stack { flex:1; display:flex; min-width:0; overflow:hidden; }
+  .pane { display:flex; flex-direction:column; min-height:0; border-right:1px solid var(--line); background:var(--bg); transition:flex-basis .35s ease, width .35s ease; overflow:hidden; }
+  .pane.spine { flex:0 0 46px; cursor:pointer; background:var(--side); }
+  .pane.spine:hover { background:var(--sel); }
+  .pane.spine .content, .pane.peek .content { display:none; }
+  .pane.active { flex:1 1 auto; min-width:0; background:var(--paper); }
+  .pane.peek { flex:0 0 150px; cursor:pointer; background:repeating-linear-gradient(135deg, var(--bg) 0 10px, #efe9de 10px 20px); }
+  .pane.hidden { flex:0 0 0; border:0; }
+  .spine-l { display:none; writing-mode:vertical-rl; transform:rotate(180deg); padding:14px 0; align-self:center; white-space:nowrap; font-weight:500; color:var(--muted); gap:10px; align-items:center; }
+  .pane.spine .spine-l { display:flex; }
+  .spine-l .ok { color:var(--add-ink); }
+  .peek-l { display:none; padding:18px 16px; color:var(--muted); }
+  .peek-l b { display:block; color:var(--ink); font-family:Fraunces, serif; font-size:16px; margin:4px 0 6px; font-weight:500; }
+  .pane.peek .peek-l { display:block; }
+  .content { flex:1; overflow:auto; display:flex; flex-direction:column; min-height:0; }
+  .ph { padding:22px 30px 0; }
+  .ph .step { font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--accent); font-weight:600; }
+  .ph h2 { font-family:Fraunces, serif; font-weight:500; font-size:26px; margin:4px 0 4px; letter-spacing:-0.01em; }
+  .ph p { color:var(--muted); margin:0; }
+  .pb { padding:20px 30px; flex:1; }
+  .pf { position:sticky; bottom:0; padding:12px 30px; border-top:1px solid var(--line); background:var(--paper); display:flex; gap:8px; align-items:center; }
+  .pf .sp { flex:1; }
+  .btn { all:unset; cursor:pointer; padding:8px 14px; border-radius:8px; background:var(--paper); border:1px solid var(--line); font-weight:500; white-space:nowrap; }
+  .btn.pri { background:var(--accent); color:#fff; border-color:var(--accent); }
+  .btn.sm { padding:5px 10px; font-size:12px; }
+  .muted { color:var(--muted); }
+
+  /* step 1 */
+  .s1 { display:grid; grid-template-columns:1fr 1fr; gap:22px; }
+  .urlbar { display:flex; gap:8px; margin-bottom:10px; }
+  .input { flex:1; padding:9px 12px; border:1px solid var(--line); border-radius:8px; background:#fff; color:var(--ink); font:inherit; }
+  textarea.input { width:100%; height:320px; resize:vertical; font-family:'Source Serif 4', serif; font-size:14px; line-height:1.55; }
+  .ok-badge { display:inline-flex; gap:6px; align-items:center; padding:4px 10px; border-radius:999px; background:var(--add); color:var(--add-ink); font-size:12px; font-weight:500; }
+  .form { display:grid; grid-template-columns:1fr 1fr; gap:12px 14px; }
+  .form label { display:flex; flex-direction:column; gap:5px; font-size:11.5px; color:var(--muted); }
+  .form label.w { grid-column:1 / -1; }
+  .form .input { font-size:13.5px; }
+  .ai { position:relative; } .ai .input { background:#fffaf0; border-color:#ecd9b6; }
+  .ai::after { content:"✨"; position:absolute; right:10px; bottom:9px; font-size:11px; opacity:.7; }
+  .kw { display:inline-flex; align-items:center; gap:5px; margin:3px 4px 3px 0; padding:3px 9px; border-radius:6px; background:var(--accent-soft); color:var(--accent); font-size:12px; }
+  .kw i { font-style:normal; opacity:.5; cursor:pointer; }
+
+  /* step 2 */
+  .hint { background:var(--note); border:1px solid var(--note-line); border-radius:10px; padding:10px 14px; margin-bottom:18px; }
+  .tgrid { display:grid; grid-template-columns:repeat(auto-fill, minmax(160px,1fr)); gap:18px; }
+  .tpl { cursor:pointer; }
+  .thumb { aspect-ratio:1/1.35; background:#fff; border:1px solid var(--line); border-radius:4px; padding:14px 12px; box-shadow:0 3px 10px rgba(80,60,20,.08); position:relative; transition:transform .12s; }
+  .tpl:hover .thumb { transform:translateY(-2px); }
+  .thumb i { display:block; height:4px; background:#e7e0d2; border-radius:2px; margin-bottom:5px; }
+  .thumb i.h { height:8px; width:60%; background:#cfc5b2; margin-bottom:9px; }
+  .thumb i.a { width:30%; background:var(--accent); opacity:.6; margin-top:9px; }
+  .tpl.on .thumb { outline:3px solid var(--accent); outline-offset:2px; }
+  .tpl .chk { position:absolute; top:8px; right:8px; width:20px; height:20px; border-radius:50%; border:1.5px solid var(--line); background:#fff; display:grid; place-items:center; font-size:11px; color:#fff; }
+  .tpl.on .chk { background:var(--accent); border-color:var(--accent); }
+  .tpl .nm { margin-top:9px; font-weight:500; } .tpl small { color:var(--muted); }
+
+  /* step 3 editor */
+  .edbar { display:flex; gap:6px; align-items:center; padding:12px 30px; border-bottom:1px solid var(--line); }
+  .dtab { all:unset; cursor:pointer; padding:6px 12px; border-radius:7px; color:var(--muted); }
+  .dtab.on { background:var(--sel); color:var(--ink); font-weight:500; }
+  .edwrap { display:grid; grid-template-columns:1fr 260px; gap:24px; padding:26px 30px; background:var(--bg); flex:1; align-items:start; }
+  .page { background:var(--paper); max-width:600px; width:100%; margin:0 auto; padding:52px 58px; box-shadow:0 4px 24px rgba(80,60,20,.12); border-radius:3px; font-family:'Source Serif 4', serif; font-size:14px; line-height:1.55; }
+  .page h3 { font-family:Fraunces, serif; font-size:26px; font-weight:600; margin:0; }
+  .page .role { color:var(--muted); margin:2px 0 16px; font-family:Inter; font-size:12.5px; }
+  .page h5 { font-family:Inter; text-transform:uppercase; font-size:10.5px; letter-spacing:.1em; color:var(--accent); margin:18px 0 6px; border-bottom:1px solid var(--line); padding-bottom:4px; }
+  .blk { position:relative; padding:3px 6px; margin:0 -6px; border-radius:4px; }
+  .blk:hover { background:#faf5ea; }
+  .spark { all:unset; position:absolute; left:-32px; top:2px; width:24px; height:24px; border-radius:6px; display:grid; place-items:center; cursor:pointer; background:var(--accent-soft); color:var(--accent); font-size:12px; opacity:0; transition:opacity .1s; }
+  .blk:hover .spark, .blk.active .spark { opacity:1; }
+  .blk.active { background:var(--note); box-shadow:inset 3px 0 0 var(--note-line); }
+  ins { background:var(--add); color:var(--add-ink); text-decoration:none; border-radius:2px; padding:0 1px; }
+  del { background:var(--del); color:var(--del-ink); border-radius:2px; padding:0 1px; }
+  .margin { position:sticky; top:0; display:flex; flex-direction:column; gap:12px; }
+  .note { background:var(--note); border:1px solid var(--note-line); border-radius:10px; padding:12px 14px; font-size:13px; line-height:1.45; }
+  .note b { display:block; margin-bottom:4px; }
+  .acts { display:flex; gap:6px; margin-top:10px; flex-wrap:wrap; }
+  .acts button { all:unset; cursor:pointer; padding:5px 10px; border-radius:6px; background:#fff; border:1px solid var(--note-line); font-size:12px; }
+  .acts button.ok { background:var(--add-ink); color:#fff; border-color:var(--add-ink); }
+  .score { background:var(--paper); border:1px solid var(--line); border-radius:10px; padding:14px; }
+  .meter { height:8px; background:#eee6d6; border-radius:4px; overflow:hidden; margin:8px 0; }
+  .meter i { display:block; height:100%; width:72%; background:linear-gradient(90deg, var(--s-interview), var(--s-offer)); }
+
+  /* step 4 extras */
+  .xlist { display:grid; grid-template-columns:repeat(auto-fill, minmax(260px,1fr)); gap:10px; }
+  .x { display:flex; align-items:center; gap:12px; padding:12px; border:1px solid var(--line); border-radius:10px; background:#fff; cursor:pointer; }
+  .x.on { border-color:var(--accent); background:#fff8f3; }
+  .x .ic { width:30px; height:38px; border-radius:3px; background:var(--bg); border:1px solid var(--line); display:grid; place-items:center; font-size:8.5px; font-weight:700; color:#b5543b; flex:none; }
+  .x .tx { flex:1; } .x small { color:var(--muted); display:block; }
+  .x .tg { width:34px; height:20px; border-radius:10px; background:var(--line); position:relative; flex:none; transition:.15s; }
+  .x .tg::after { content:""; position:absolute; top:2px; left:2px; width:16px; height:16px; border-radius:50%; background:#fff; transition:.15s; }
+  .x.on .tg { background:var(--accent); } .x.on .tg::after { left:16px; }
+  .drop { margin-top:16px; border:2px dashed var(--line); border-radius:12px; padding:26px; text-align:center; color:var(--muted); }
+
+  /* step 5 bucket */
+  .bk { display:grid; grid-template-columns:1fr 280px; gap:24px; }
+  .bi { display:flex; align-items:center; gap:12px; padding:10px 12px; background:#fff; border:1px solid var(--line); border-radius:10px; margin-bottom:8px; cursor:grab; }
+  .bi.dragging { opacity:.4; }
+  .bi .h { color:var(--muted); letter-spacing:-2px; }
+  .bi .n { font-family:Fraunces, serif; font-size:18px; width:20px; color:var(--muted); }
+  .bi .mini { width:30px; height:40px; background:var(--bg); border:1px solid var(--line); border-radius:2px; padding:4px 3px; flex:none; }
+  .bi .mini i { display:block; height:2px; background:#d6ccba; margin-bottom:3px; }
+  .bi .tx { flex:1; } .bi small { color:var(--muted); }
+  .out { background:var(--bg); border:1px solid var(--line); border-radius:12px; padding:16px; display:flex; flex-direction:column; gap:10px; }
+  .out h4 { margin:0; font-family:Fraunces, serif; font-weight:500; font-size:17px; }
+  .out label { font-size:11.5px; color:var(--muted); display:flex; flex-direction:column; gap:4px; }
+  .radio { display:flex; gap:6px; } .radio span { flex:1; text-align:center; padding:7px; border:1px solid var(--line); border-radius:7px; cursor:pointer; background:#fff; }
+  .radio span.on { border-color:var(--accent); color:var(--accent); font-weight:600; background:#fff8f3; }
+  .check { display:flex; gap:8px; align-items:center; font-size:13px; }
+  .check input { accent-color:var(--accent); width:15px; height:15px; }
+
+  /* tracker */
+  .view { display:none; flex:1; min-height:0; } .view.on { display:flex; }
+  .tracker { flex:1; overflow:auto; padding:30px 40px; }
+  .stats { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin:18px 0; }
+  .stat { background:var(--paper); border:1px solid var(--line); border-radius:12px; padding:16px 18px; }
+  .stat .n { font-family:Fraunces, serif; font-size:30px; } .stat .l { color:var(--muted); font-size:12px; }
+  table { width:100%; border-collapse:collapse; background:var(--paper); border:1px solid var(--line); border-radius:12px; overflow:hidden; }
+  td, th { text-align:left; padding:10px 14px; border-top:1px solid var(--line); }
+  th { color:var(--muted); font-weight:500; font-size:12px; border-top:0; background:#faf6ee; }
+  .pill { display:inline-flex; align-items:center; gap:6px; padding:3px 10px; border-radius:999px; font-size:12px; background:#f1ece2; }
+  button.pill { all:unset; display:inline-flex; align-items:center; gap:6px; padding:4px 10px; border-radius:999px; font-size:12px; background:#f1ece2; cursor:pointer; border:1px solid transparent; }
+  button.pill:hover { border-color:var(--line); background:#fff; }
+  button.pill .car { opacity:.5; font-size:9px; }
+  tr.closed td { color:var(--muted); }
+  tr.closed td:first-child { text-decoration:line-through; text-decoration-color:var(--line); }
+  .filters { display:flex; gap:6px; margin:0 0 12px; flex-wrap:wrap; }
+  .filters button { all:unset; cursor:pointer; padding:5px 12px; border-radius:999px; border:1px solid var(--line); background:var(--paper); font-size:12.5px; display:inline-flex; gap:6px; align-items:center; }
+  .filters button.on { background:var(--ink); color:var(--paper); border-color:var(--ink); }
+  .menu { position:fixed; display:none; background:var(--paper); border:1px solid var(--line); border-radius:10px; box-shadow:0 12px 30px rgba(60,40,10,.18); padding:6px; width:230px; z-index:30; }
+  .menu.on { display:block; }
+  .menu button { all:unset; box-sizing:border-box; width:100%; display:flex; align-items:center; gap:9px; padding:7px 10px; border-radius:6px; cursor:pointer; }
+  .menu button:hover { background:var(--bg); }
+  .menu button.cur { font-weight:600; }
+  .menu button.cur::after { content:"✓"; margin-left:auto; color:var(--accent); }
+  .menu .extra { border-top:1px solid var(--line); margin-top:6px; padding:8px 6px 4px; display:flex; flex-direction:column; gap:6px; font-size:12px; color:var(--muted); }
+  .menu .extra input { padding:6px 8px; border:1px solid var(--line); border-radius:6px; font:inherit; color:var(--ink); }
+  .open-btn { all:unset; cursor:pointer; color:var(--accent); font-size:12.5px; }
+  .toast { position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(20px); background:var(--ink); color:var(--paper); padding:10px 16px; border-radius:10px; opacity:0; transition:.25s; pointer-events:none; z-index:40; }
+  .toast.on { opacity:1; transform:translateX(-50%); }
+</style>
+</head>
+<body>
+
+<div class="titlebar">
+  <div class="lights"><i></i><i></i><i></i></div>
+  <div class="brand">easy<span>·</span>cv</div>
+  <div class="seg">
+    <button class="on" data-view="files">Applications</button>
+    <button>Templates</button>
+    <button>Extras</button>
+    <button>Profile</button>
+    <button data-view="tracker">Tracker</button>
+  </div>
+  <div class="crumbs" id="crumbs">Applications › <b>Nordwind Logistics</b> › <span id="crumb-step">Posting</span></div>
+  <div class="search">⌕ Search files…</div>
+</div>
+
+<div class="browser view on" id="view-files">
+  <!-- column 1: job folders -->
+  <div class="col jobs">
+    <div class="col-h">Applications <span>9</span></div>
+    <div class="col-b">
+      <div class="grp">This week</div>
+      <button class="row on"><span class="fold"></span><span class="tx"><div>Nordwind Logistics</div><small>Senior Frontend Engineer</small></span><span class="dot" style="background:var(--s-interview)"></span><span class="chev">›</span></button>
+      <button class="row"><span class="fold"></span><span class="tx"><div>Lumen Health</div><small>Product Engineer · draft</small></span><span class="dot" style="background:var(--s-saved)"></span><span class="chev">›</span></button>
+      <div class="grp">October</div>
+      <button class="row"><span class="fold"></span><span class="tx"><div>Helix Bank</div><small>Full-stack Developer</small></span><span class="dot" style="background:var(--s-applied)"></span><span class="chev">›</span></button>
+      <button class="row"><span class="fold"></span><span class="tx"><div>Atlas Robotics</div><small>Software Engineer, Tools</small></span><span class="dot" style="background:var(--s-applied)"></span><span class="chev">›</span></button>
+      <button class="row"><span class="fold"></span><span class="tx"><div>Mosaic Media</div><small>Web Engineer</small></span><span class="dot" style="background:var(--s-offer)"></span><span class="chev">›</span></button>
+      <button class="row"><span class="fold"></span><span class="tx"><div>Pine &amp; Co</div><small>React Developer</small></span><span class="dot" style="background:var(--s-applied)"></span><span class="chev">›</span></button>
+      <div class="grp">September</div>
+      <button class="row"><span class="fold"></span><span class="tx"><div>Kiko Studio</div><small>Frontend Developer</small></span><span class="dot" style="background:var(--s-rejected)"></span><span class="chev">›</span></button>
+    </div>
+    <button class="newjob">+ New application</button>
+  </div>
+
+  <!-- column 2: inside the job folder -->
+  <div class="col files">
+    <div class="col-spine" title="Show folders">📁 Nordwind Logistics ›</div>
+    <div class="col-h">Nordwind Logistics</div>
+    <div class="col-b">
+      <div class="grp">Steps</div>
+      <button class="fi" data-go="0"><span class="num done">1</span>Posting &amp; details</button>
+      <button class="fi" data-go="1"><span class="num done">2</span>Choose documents</button>
+      <button class="fi" data-go="2"><span class="num">3</span>Edit documents</button>
+      <button class="fi" data-go="3"><span class="num">4</span>Add extras</button>
+      <button class="fi" data-go="4"><span class="num">5</span>Final bucket</button>
+      <div class="grp">Files in this folder</div>
+      <button class="fi" data-go="0"><span class="ic md">MD</span><span>posting.md</span></button>
+      <button class="fi" data-go="2"><span class="ic md">MD</span><span>cv-en.md <small class="muted">v4</small></span></button>
+      <button class="fi" data-go="2"><span class="ic md">MD</span><span>cover.md <small class="muted">v2</small></span></button>
+      <button class="fi" data-go="3"><span class="ic pdf">PDF</span><span>certificates.pdf</span></button>
+      <button class="fi"><span class="ic">▸</span><span class="muted">versions/</span></button>
+      <button class="fi" data-go="4"><span class="ic">▸</span><span class="muted">out/</span></button>
+    </div>
+  </div>
+
+  <!-- pane stack -->
+  <div class="stack" id="stack">
+
+    <!-- 1 posting -->
+    <section class="pane" data-title="Posting & details">
+      <div class="spine-l"><span class="ok">✓</span>1 · Posting &amp; details</div>
+      <div class="peek-l">Next<b>Posting &amp; details</b></div>
+      <div class="content">
+        <div class="ph"><div class="step">Step 1 of 5</div><h2>Posting &amp; details</h2><p>Paste a link or the full text. The AI fills in the details on the right, and you can edit any field.</p></div>
+        <div class="pb s1">
+          <div>
+            <div class="urlbar"><input class="input" value="https://jobs.nordwind.example/senior-frontend"><button class="btn">Fetch</button></div>
+            <textarea class="input">Senior Frontend Engineer (m/w/d), Hamburg, hybrid
+
+We're looking for a senior frontend engineer to lead the rebuild of our shipment tracking platform used by 4,000 logistics partners across Europe.
+
+What you'll do
+- Own the architecture of our React and TypeScript apps
+- Mentor two mid-level engineers
+- Work with design on an accessible component library
+
+What you bring
+- 5+ years with React and TypeScript
+- Experience with design systems and GraphQL
+- German at B2 level or higher
+
+Salary: €75,000–90,000. Apply by November 15.</textarea>
+            <div style="margin-top:10px"><span class="ok-badge">✓ Looks like the full posting · snapshot saved</span></div>
+          </div>
+          <div>
+            <div class="form">
+              <label class="ai w">Job title<input class="input" value="Senior Frontend Engineer"></label>
+              <label class="ai">Company<input class="input" value="Nordwind Logistics"></label>
+              <label class="ai">Location<input class="input" value="Hamburg · hybrid"></label>
+              <label class="ai">Salary<input class="input" value="€75–90k"></label>
+              <label class="ai">Deadline<input class="input" value="15 Nov 2026"></label>
+              <label class="ai">Posting language<input class="input" value="English"></label>
+              <label>Status<select class="input"><option>Interview</option><option>Saved</option><option>Applied</option><option>Offer</option><option>Rejected</option></select></label>
+              <label class="w">Key requirements <span>
+                <span class="kw">React <i>×</i></span><span class="kw">TypeScript <i>×</i></span><span class="kw">Accessibility <i>×</i></span><span class="kw">Mentoring <i>×</i></span><span class="kw">Design systems <i>×</i></span><span class="kw">GraphQL <i>×</i></span><span class="kw">German B2 <i>×</i></span><span class="kw" style="background:transparent;border:1px dashed var(--line);color:var(--muted)">+ add</span></span></label>
+              <label class="w">Contact &amp; notes<input class="input" value="Mara Feld, Engineering Manager · referred by Jonas"></label>
+            </div>
+          </div>
+        </div>
+        <div class="pf"><span class="muted">✨ = filled by AI from the posting</span><span class="sp"></span><button class="btn pri" data-next>Choose documents →</button></div>
+      </div>
+    </section>
+
+    <!-- 2 choose templates -->
+    <section class="pane" data-title="Choose documents">
+      <div class="spine-l"><span class="ok">✓</span>2 · Documents</div>
+      <div class="peek-l">Next<b>Choose documents</b>Pick templates to copy into this job.</div>
+      <div class="content">
+        <div class="ph"><div class="step">Step 2 of 5</div><h2>Choose documents</h2><p>The ones you pick are copied into this job's folder. Your templates stay unchanged.</p></div>
+        <div class="pb">
+          <div class="hint">✨ The posting is in English and asks for German B2, so I suggest <b>CV · English</b> and <b>Cover letter · standard</b>.</div>
+          <div class="tgrid">
+            <div class="tpl on"><div class="thumb"><span class="chk">✓</span><i class="h"></i><i></i><i style="width:70%"></i><i class="a"></i><i></i><i></i><i style="width:80%"></i><i class="a"></i><i></i><i style="width:60%"></i></div><div class="nm">CV · English</div><small>Classic theme · edited Oct 20</small></div>
+            <div class="tpl"><div class="thumb"><span class="chk">✓</span><i class="h"></i><i></i><i style="width:70%"></i><i class="a"></i><i></i><i></i><i style="width:80%"></i><i class="a"></i><i></i><i style="width:60%"></i></div><div class="nm">CV · Deutsch</div><small>Classic theme · edited Oct 2</small></div>
+            <div class="tpl on"><div class="thumb"><span class="chk">✓</span><i class="h"></i><i style="width:40%"></i><br><i></i><i></i><i></i><i style="width:85%"></i><br><i></i><i></i><i style="width:50%"></i></div><div class="nm">Cover letter · standard</div><small>EN · edited Oct 14</small></div>
+            <div class="tpl"><div class="thumb"><span class="chk">✓</span><i class="h"></i><i style="width:40%"></i><br><i></i><i></i><i style="width:70%"></i></div><div class="nm">Cover letter · short</div><small>EN · for email body</small></div>
+            <div class="tpl"><div class="thumb"><span class="chk">✓</span><i class="h"></i><i style="width:40%"></i><br><i></i><i></i><i></i><i style="width:85%"></i><br><i></i><i style="width:50%"></i></div><div class="nm">Anschreiben · Standard</div><small>DE · edited Sep 28</small></div>
+          </div>
+        </div>
+        <div class="pf"><span class="muted"><b id="tplcount">2</b> selected</span><span class="sp"></span><button class="btn" data-prev>← Back</button><button class="btn pri" data-next>Copy into job &amp; edit →</button></div>
+      </div>
+    </section>
+
+    <!-- 3 edit -->
+    <section class="pane" data-title="Edit documents">
+      <div class="spine-l">3 · Edit</div>
+      <div class="peek-l">Next<b>Edit documents</b>Tailor each paragraph with AI.</div>
+      <div class="content">
+        <div class="edbar">
+          <button class="dtab on">cv-en.md</button><button class="dtab">cover.md</button>
+          <span class="sp" style="flex:1"></span>
+          <span class="pill">v4 · saved</span><button class="btn sm">↺ Versions</button><button class="btn sm">Theme: Classic</button><button class="btn sm pri">✨ Tailor whole doc</button>
+        </div>
+        <div class="edwrap">
+          <div class="page">
+            <h3>Alex Example</h3>
+            <div class="role">Frontend Engineer · Berlin · sample@mail.com</div>
+            <h5>Profile</h5>
+            <div class="blk"><button class="spark">✨</button>Frontend engineer with 7 years of experience building web applications for fintech and e-commerce companies.</div>
+            <h5>Experience</h5>
+            <div class="blk"><b>Lead Frontend Developer</b>, Parcelio GmbH · 2021–now</div>
+            <div class="blk active"><button class="spark">✨</button>• <del>Worked on the frontend of the tracking dashboard.</del> <ins>Led the React/TypeScript rebuild of a shipment-tracking dashboard used by 1,200 partners, mentoring 3 engineers.</ins></div>
+            <div class="blk"><button class="spark">✨</button>• Built a shared component library used across 4 products, with WCAG AA accessibility.</div>
+            <div class="blk"><button class="spark">✨</button>• Introduced GraphQL to replace 30+ REST endpoints, cutting page load by 40%.</div>
+            <div class="blk" style="margin-top:8px"><b>Frontend Developer</b>, Shoply · 2018–2021</div>
+            <div class="blk"><button class="spark">✨</button>• Developed checkout features in Vue and later React for 2M monthly users.</div>
+            <h5>Skills</h5>
+            <div class="blk"><button class="spark">✨</button>React, TypeScript, Vue, GraphQL, Node.js, Jest, Playwright, Figma. German (B2), English (C2).</div>
+          </div>
+          <div class="margin">
+            <div class="note"><b>✨ Suggested rewrite</b>The posting stresses <i>logistics</i>, <i>architecture ownership</i> and <i>mentoring</i>. This version uses facts from your master profile.
+              <div class="acts"><button class="ok">✓ Accept</button><button>Edit</button><button>✕ Reject</button><button>↻</button></div></div>
+            <div class="score"><b>Match with posting</b><div class="meter"><i></i></div><b style="font-size:20px">72%</b>
+              <p class="muted" style="font-size:12px;margin:6px 0 0">Missing: <span class="kw">Design systems</span><span class="kw">German B2</span></p></div>
+          </div>
+        </div>
+        <div class="pf"><span class="muted">Every accepted change is saved as a new version.</span><span class="sp"></span><button class="btn" data-prev>← Back</button><button class="btn pri" data-next>Add extras →</button></div>
+      </div>
+    </section>
+
+    <!-- 4 extras -->
+    <section class="pane" data-title="Add extras">
+      <div class="spine-l">4 · Extras</div>
+      <div class="peek-l">Next<b>Add extras</b>Certificates, references, portfolio.</div>
+      <div class="content">
+        <div class="ph"><div class="step">Step 4 of 5</div><h2>Add extras</h2><p>Attach documents from your Extras library, or drop new files here.</p></div>
+        <div class="pb">
+          <div class="xlist">
+            <div class="x on"><span class="ic">PDF</span><span class="tx"><b>Certificates</b><small>3 pages · AWS, Scrum</small></span><span class="tg"></span></div>
+            <div class="x"><span class="ic">PDF</span><span class="tx"><b>Arbeitszeugnis Parcelio</b><small>2 pages · German</small></span><span class="tg"></span></div>
+            <div class="x"><span class="ic">PDF</span><span class="tx"><b>Arbeitszeugnis Shoply</b><small>2 pages · German</small></span><span class="tg"></span></div>
+            <div class="x"><span class="ic">PDF</span><span class="tx"><b>University transcript</b><small>4 pages</small></span><span class="tg"></span></div>
+            <div class="x"><span class="ic">PDF</span><span class="tx"><b>Portfolio one-pager</b><small>1 page</small></span><span class="tg"></span></div>
+          </div>
+          <div class="drop">Drop PDFs here, or <u>browse</u>. They are added to this job and to your Extras library.</div>
+        </div>
+        <div class="pf"><span class="sp"></span><button class="btn" data-prev>← Back</button><button class="btn pri" data-next>Final bucket →</button></div>
+      </div>
+    </section>
+
+    <!-- 5 bucket -->
+    <section class="pane" data-title="Final bucket">
+      <div class="spine-l">5 · Bucket</div>
+      <div class="peek-l">Next<b>Final bucket</b>Order, then download.</div>
+      <div class="content">
+        <div class="ph"><div class="step">Step 5 of 5</div><h2>Final bucket</h2><p>Drag to set the order. That's the order used for the merged PDF and in the zip.</p></div>
+        <div class="pb bk">
+          <div id="bucket">
+            <div class="bi" draggable="true"><span class="h">⋮⋮</span><span class="n">1</span><span class="mini"><i></i><i></i><i style="width:60%"></i><i></i></span><span class="tx"><b>Cover letter</b><br><small>cover.md → PDF · 1 page</small></span><button class="btn sm">Preview</button></div>
+            <div class="bi" draggable="true"><span class="h">⋮⋮</span><span class="n">2</span><span class="mini"><i></i><i></i><i></i><i style="width:70%"></i></span><span class="tx"><b>CV · English</b><br><small>cv-en.md v5 → PDF · 2 pages</small></span><button class="btn sm">Preview</button></div>
+            <div class="bi" draggable="true"><span class="h">⋮⋮</span><span class="n">3</span><span class="mini"><i></i><i style="width:50%"></i><i></i></span><span class="tx"><b>Certificates</b><br><small>certificates.pdf · 3 pages</small></span><button class="btn sm">Preview</button></div>
+          </div>
+          <div class="out">
+            <h4>Export</h4>
+            <div class="radio"><span class="on">One merged PDF</span><span>Separate PDFs</span></div>
+            <label>File name<input class="input" value="Alex_Example_Nordwind_Application.pdf"></label>
+            <div class="check"><input type="checkbox" checked> Also save to <code>out/</code> in this folder</div>
+            <div class="check"><input type="checkbox" checked> Mark as <b>Applied</b> today and remind me in 7 days</div>
+            <button class="btn pri" style="text-align:center">⬇ Download PDF · 6 pages</button>
+            <div style="display:flex;gap:8px"><button class="btn" style="flex:1;text-align:center">Download zip</button><button class="btn" style="flex:1;text-align:center">Open folder</button></div>
+          </div>
+        </div>
+        <div class="pf"><span class="muted">You can drag files from here straight onto a job portal in the desktop app.</span><span class="sp"></span><button class="btn" data-prev>← Back</button></div>
+      </div>
+    </section>
+  </div>
+</div>
+
+<!-- tracker view (secondary) -->
+<div class="view" id="view-tracker">
+  <div class="tracker">
+    <h2 style="font-family:Fraunces,serif;font-weight:500;font-size:26px;margin:0">Tracker</h2>
+    <p class="muted" style="margin:4px 0 0">2 follow-ups due this week, and one interview on Thursday.</p>
+    <div class="stats">
+      <div class="stat"><div class="n" id="st-sent"></div><div class="l">Applications sent</div></div>
+      <div class="stat"><div class="n" id="st-int"></div><div class="l">Interviews</div></div>
+      <div class="stat"><div class="n" id="st-off"></div><div class="l">Offers</div></div>
+      <div class="stat"><div class="n" id="st-rate"></div><div class="l">Response rate</div></div>
+    </div>
+    <div class="filters" id="filters"></div>
+    <table>
+      <thead><tr><th>Company</th><th>Role</th><th>Status <span class="muted" style="font-weight:400">(click to change)</span></th><th>Sent</th><th>Next</th><th></th></tr></thead>
+      <tbody id="trows"></tbody>
+    </table>
+    <div class="menu" id="smenu"></div>
+    <div class="toast" id="toast"></div>
+  </div>
+</div>
+
+<script>
+  const panes = [...document.querySelectorAll('.pane')];
+  const steps = [...document.querySelectorAll('.fi[data-go]')];
+  let cur = 0;
+  function go(i) {
+    cur = Math.max(0, Math.min(panes.length - 1, i));
+    panes.forEach((p, k) => {
+      p.className = 'pane ' + (k < cur ? 'spine' : k === cur ? 'active' : k === cur + 1 ? 'peek' : 'hidden');
+    });
+    steps.forEach(s => s.classList.toggle('on', +s.dataset.go === cur && s.querySelector('.num')));
+    document.getElementById('crumb-step').textContent = panes[cur].dataset.title;
+    // editing needs room: fold the folder columns away, like a Finder column view scrolling left
+    document.getElementById('view-files').classList.toggle('compact', cur === 2);
+  }
+  document.querySelector('.files').addEventListener('click', e => {
+    const b = document.getElementById('view-files');
+    if (b.classList.contains('compact')) { e.stopPropagation(); b.classList.remove('compact'); }
+  }, true);
+  panes.forEach((p, k) => p.addEventListener('click', () => { if (k !== cur) go(k); }));
+  document.querySelectorAll('[data-next]').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); go(cur + 1); }));
+  document.querySelectorAll('[data-prev]').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); go(cur - 1); }));
+  steps.forEach(s => s.addEventListener('click', () => go(+s.dataset.go)));
+  go(0);
+
+  document.querySelectorAll('.tpl').forEach(t => t.addEventListener('click', () => {
+    t.classList.toggle('on');
+    document.getElementById('tplcount').textContent = document.querySelectorAll('.tpl.on').length;
+  }));
+  document.querySelectorAll('.x').forEach(x => x.addEventListener('click', () => x.classList.toggle('on')));
+  document.querySelectorAll('.spark').forEach(s => s.addEventListener('click', () => {
+    document.querySelectorAll('.blk').forEach(b => b.classList.remove('active'));
+    s.parentElement.classList.add('active');
+  }));
+  document.querySelectorAll('.radio span').forEach(r => r.addEventListener('click', () => {
+    r.parentElement.querySelectorAll('span').forEach(x => x.classList.toggle('on', x === r));
+  }));
+
+  // drag to reorder bucket
+  const bucket = document.getElementById('bucket');
+  let dragged = null;
+  bucket.addEventListener('dragstart', e => { dragged = e.target.closest('.bi'); dragged.classList.add('dragging'); });
+  bucket.addEventListener('dragend', () => { dragged.classList.remove('dragging'); renumber(); });
+  bucket.addEventListener('dragover', e => {
+    e.preventDefault();
+    const after = [...bucket.querySelectorAll('.bi:not(.dragging)')].find(el => e.clientY < el.getBoundingClientRect().top + el.offsetHeight / 2);
+    after ? bucket.insertBefore(dragged, after) : bucket.appendChild(dragged);
+  });
+  const renumber = () => bucket.querySelectorAll('.bi .n').forEach((n, i) => n.textContent = i + 1);
+
+  // tracker: status is editable per row
+  const STATUS = {
+    saved:     { label:'Saved',     color:'var(--s-saved)' },
+    applied:   { label:'Applied',   color:'var(--s-applied)' },
+    interview: { label:'Interview', color:'var(--s-interview)', ask:'Interview date & time', ph:'Thu 30 Oct, 14:00' },
+    offer:     { label:'Offer',     color:'var(--s-offer)',     ask:'Reply by', ph:'5 Nov' },
+    rejected:  { label:'Rejected',  color:'var(--s-rejected)',  ask:'Stage rejected at (optional)', ph:'After first interview' },
+    ghosted:   { label:'No reply',  color:'#b9b0a0' },
+    withdrawn: { label:'Withdrawn', color:'#8d8576' },
+  };
+  const jobs = [
+    { co:'Nordwind Logistics', role:'Senior Frontend Engineer', s:'interview', sent:'Oct 14', next:'Interview Thu 14:00' },
+    { co:'Lumen Health', role:'Product Engineer', s:'saved', sent:'–', next:'Posting closes Mon' },
+    { co:'Helix Bank', role:'Full-stack Developer', s:'applied', sent:'Oct 17', next:'Follow up Fri' },
+    { co:'Atlas Robotics', role:'Software Engineer, Tools', s:'applied', sent:'Oct 15', next:'Follow up Oct 29' },
+    { co:'Mosaic Media', role:'Web Engineer', s:'offer', sent:'Oct 3', next:'Reply by Nov 5' },
+    { co:'Pine & Co', role:'React Developer', s:'applied', sent:'Oct 24', next:'Follow up Oct 31' },
+    { co:'Kiko Studio', role:'Frontend Developer', s:'rejected', sent:'Sep 22', next:'–' },
+  ];
+  let filter = 'all', menuFor = null;
+  const menu = document.getElementById('smenu');
+  const isClosed = s => ['rejected','ghosted','withdrawn'].includes(s);
+  function renderTracker() {
+    const sent = jobs.filter(j => j.s !== 'saved');
+    const replied = sent.filter(j => !['applied','ghosted'].includes(j.s));
+    document.getElementById('st-sent').textContent = sent.length;
+    document.getElementById('st-int').textContent = jobs.filter(j => j.s === 'interview').length;
+    document.getElementById('st-off').textContent = jobs.filter(j => j.s === 'offer').length;
+    document.getElementById('st-rate').textContent = sent.length ? Math.round(replied.length / sent.length * 100) + '%' : '–';
+    const counts = { all: jobs.length, active: jobs.filter(j => !isClosed(j.s)).length };
+    Object.keys(STATUS).forEach(k => counts[k] = jobs.filter(j => j.s === k).length);
+    const fl = [['all','All'],['active','Active'],...Object.entries(STATUS).filter(([k]) => counts[k]).map(([k,v]) => [k, v.label])];
+    document.getElementById('filters').innerHTML = fl.map(([k,l]) =>
+      `<button data-f="${k}" class="${filter===k?'on':''}">${STATUS[k] ? `<span class="dot" style="background:${STATUS[k].color}"></span>` : ''}${l} <span class="muted">${counts[k]}</span></button>`).join('');
+    const shown = jobs.map((j,i) => [j,i]).filter(([j]) => filter === 'all' || (filter === 'active' ? !isClosed(j.s) : j.s === filter));
+    document.getElementById('trows').innerHTML = shown.map(([j,i]) => `
+      <tr class="${isClosed(j.s)?'closed':''}"><td>${j.co}</td><td>${j.role}</td>
+      <td><button class="pill" data-i="${i}"><span class="dot" style="background:${STATUS[j.s].color}"></span>${STATUS[j.s].label}<span class="car">▼</span></button></td>
+      <td>${j.sent}</td><td>${j.next}</td><td><button class="open-btn">Open folder ›</button></td></tr>`).join('');
+  }
+  function openMenu(btn) {
+    menuFor = +btn.dataset.i;
+    const j = jobs[menuFor];
+    menu.innerHTML = Object.entries(STATUS).map(([k,v]) =>
+      `<button data-s="${k}" class="${j.s===k?'cur':''}"><span class="dot" style="background:${v.color}"></span>${v.label}</button>`).join('');
+    const r = btn.getBoundingClientRect();
+    menu.style.left = r.left + 'px'; menu.style.top = (r.bottom + 6) + 'px';
+    menu.classList.add('on');
+  }
+  function setStatus(k) {
+    const j = jobs[menuFor], v = STATUS[k];
+    if (v.ask && !menu.querySelector('.extra')) {
+      // statuses with a date or note ask one quick question before saving
+      menu.querySelectorAll('button').forEach(b => b.classList.toggle('cur', b.dataset.s === k));
+      menu.insertAdjacentHTML('beforeend', `<div class="extra">${v.ask}<input id="sx" placeholder="${v.ph}"><button class="btn sm pri" id="sok" style="justify-content:center">Save</button></div>`);
+      document.getElementById('sx').focus();
+      document.getElementById('sok').onclick = e => { e.stopPropagation(); commit(k, document.getElementById('sx').value); };
+      return;
+    }
+    commit(k, '');
+  }
+  function commit(k, note) {
+    const j = jobs[menuFor];
+    if (j.s === 'saved' && k !== 'saved') j.sent = 'Today';
+    j.s = k;
+    j.next = { interview:`Interview ${note||'(set date)'}`, offer:`Reply by ${note||'?'}`, applied:'Follow up in 7 days', rejected:note?`Rejected: ${note}`:'–', ghosted:'–', withdrawn:'–', saved:'–' }[k];
+    menu.classList.remove('on'); menu.innerHTML = '';
+    renderTracker();
+    const t = document.getElementById('toast');
+    t.textContent = `${j.co} → ${STATUS[k].label}. Logged in the job's timeline.`;
+    t.classList.add('on'); setTimeout(() => t.classList.remove('on'), 2200);
+  }
+  document.getElementById('trows').addEventListener('click', e => { const b = e.target.closest('button.pill'); if (b) { e.stopPropagation(); openMenu(b); } });
+  document.getElementById('filters').addEventListener('click', e => { const b = e.target.closest('[data-f]'); if (b) { filter = b.dataset.f; renderTracker(); } });
+  menu.addEventListener('click', e => { e.stopPropagation(); const b = e.target.closest('[data-s]'); if (b) setStatus(b.dataset.s); });
+  document.addEventListener('click', () => { menu.classList.remove('on'); menu.innerHTML = ''; });
+  renderTracker();
+
+  // top segments
+  document.querySelectorAll('.seg [data-view]').forEach(b => b.addEventListener('click', () => {
+    document.querySelectorAll('.seg button').forEach(x => x.classList.toggle('on', x === b));
+    document.querySelectorAll('body > .view').forEach(v => v.classList.toggle('on', v.id === 'view-' + b.dataset.view));
+    document.getElementById('crumbs').style.visibility = b.dataset.view === 'files' ? 'visible' : 'hidden';
+  }));
+</script>
+</body>
+</html>
