@@ -135,7 +135,7 @@ export function Onboarding({ state, done }: { state: AppState; done: () => void 
                   ))}
                   <label className="f" style={{ marginTop: 14 }}>Design
                     <select className="input" value={theme} onChange={e => setTheme(e.target.value)}>
-                      {Object.entries(THEMES).map(([k, t]) => <option key={k} value={k}>{t.name} — {t.note}</option>)}
+                      {Object.entries(THEMES).filter(([k]) => k !== 'original').map(([k, t]) => <option key={k} value={k}>{t.name} — {t.note}</option>)}
                     </select></label>
                 </div>
                 <div className="setup-preview"><div className="thumbwrap" dangerouslySetInnerHTML={{ __html: preview }} /></div>

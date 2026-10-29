@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { blockToMarkdown, parseBlocks, replaceBlock, serializeBlocks, setTypes, toggleMark, type Block, type LineType } from '@shared/blocks';
-import { renderDoc } from '@shared/render';
+import { renderMeta } from '@shared/render';
 import { wordDiff } from '@shared/diff';
 import type { DocMeta } from '@shared/types';
 import { CONTENT, MARGIN, PAGE_H, paginate } from './paginate';
@@ -34,7 +34,7 @@ export function DocEditor({ body, meta, onChange, readOnly = false, tailor, tail
   // the editor keeps its own blocks: an empty line you just made has no Markdown of its own yet
   const [blocks, setBlocks] = useState<Block[]>(() => parseBlocks(body));
   const emitted = useRef(body);
-  const html = useMemo(() => renderDoc(blocks, meta.theme, meta.kind, meta.lang, meta.style), [blocks, meta.theme, meta.kind, meta.lang, meta.style]);
+  const html = useMemo(() => renderMeta(blocks, meta), [blocks, meta.theme, meta.kind, meta.lang, meta.style, meta.look]);
   const paper = useRef<HTMLDivElement>(null);
   const host = useRef<HTMLDivElement>(null);
   const caret = useRef<Caret | null>(null);

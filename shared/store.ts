@@ -1,5 +1,6 @@
 import { fillPlaceholders } from './blocks';
 import { EXAMPLES } from './examples';
+import { cleanLook } from './look';
 import { STARTERS } from './starters';
 import { basename, cleanFileName, copy, copyTree, extname, httpError, join, joinFrontmatter, notFound, readJson, safeName, slugify, splitFrontmatter, uniquePath, writeJson, type Fs } from './fs';
 import { CLOSED, STATUSES, type DocMeta, type DocStyle, type ExtraFile, type Job, type JobFields, type Profile, type Status, type TemplateInfo, type VersionInfo } from './types';
@@ -45,6 +46,7 @@ function toMeta(meta: Record<string, unknown>, fallbackTitle: string): DocMeta {
     ...(meta.template ? { template: String(meta.template) } : {}),
     ...(meta.style && typeof meta.style === 'object' ? { style: cleanStyle(meta.style as DocStyle) } : {}),
     ...(meta.main === true ? { main: true } : {}),
+    ...(cleanLook(meta.look) ? { look: cleanLook(meta.look) } : {}),
   };
 }
 

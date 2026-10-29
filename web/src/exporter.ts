@@ -1,5 +1,5 @@
 import { parseBlocks } from '@shared/blocks';
-import { renderDoc } from '@shared/render';
+import { renderMeta } from '@shared/render';
 import { api, HELPER, type Doc } from './api';
 import themesCss from './themes.css?raw';
 import { pagedHtml } from './paginate';
@@ -56,7 +56,7 @@ const blobToDataUrl = (b: Blob) => new Promise<string>((res, rej) => { const f =
 /** a complete, self-contained HTML page for one document */
 export async function docHtml(d: Doc): Promise<string> {
   // broken into pages where the editor shows the breaks
-  const page = await pagedHtml(renderDoc(parseBlocks(d.body), d.meta.theme, d.meta.kind, d.meta.lang, d.meta.style));
+  const page = await pagedHtml(renderMeta(parseBlocks(d.body), d.meta));
   const esc = (s: string) => s.replace(/[<&]/g, c => (c === '<' ? '&lt;' : '&amp;'));
   return `<!doctype html><html lang="${esc(d.meta.lang)}"><head><meta charset="utf-8"><title>${esc(d.meta.title)}</title><style>
 ${await fontFaces(d.meta.theme)}

@@ -37,8 +37,13 @@ export type JobFields = Pick<Job, 'title' | 'company' | 'location' | 'salary' | 
 /** Whole-document overrides on top of the theme, set from the formatting bar. Missing = the theme's own value. */
 export interface DocStyle { size?: number; lineHeight?: number; align?: 'left' | 'justify'; margins?: 'narrow' | 'wide' }
 
+/** A text's look, read from an uploaded Word file: font, size in pt, colour (#rrggbb) */
+export interface TextLook { font?: string; size?: number; color?: string; bold?: boolean; caps?: boolean; italic?: boolean }
+/** "Your file's own look" (theme "original"): text, name, section headings (rule = a line under them), job titles; line height, space after a paragraph (pt), side margins (mm) */
+export interface DocLook { body?: TextLook; name?: TextLook; heading?: TextLook & { rule?: boolean }; entry?: TextLook; lineHeight?: number; after?: number; margin?: number; align?: 'left' | 'justify' }
+
 /** `main`: on a CV in "Documents", marks the main CV for its language, the source of facts for every application */
-export interface DocMeta { title: string; kind: DocKind; lang: string; theme: string; template?: string; style?: DocStyle; main?: boolean }
+export interface DocMeta { title: string; kind: DocKind; lang: string; theme: string; template?: string; style?: DocStyle; main?: boolean; look?: DocLook }
 
 export interface TemplateInfo extends DocMeta { id: string; updatedAt: string }
 

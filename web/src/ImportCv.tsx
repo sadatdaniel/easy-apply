@@ -3,26 +3,45 @@ import { parseBlocks } from '@shared/blocks';
 import { importDocxHtml, type Imported } from '@shared/docx';
 import { pdfItems, pdfToHtml } from '@shared/pdftext';
 import { renderDoc, THEMES } from '@shared/render';
-import type { DocKind, DocMeta, TemplateInfo } from '@shared/types';
+import { boldParagraphStyles, readDocxLook } from '@shared/docxlook';
+import type { DocKind, DocLook, DocMeta, TemplateInfo } from '@shared/types';
 import { api } from './api';
 import { useAction } from './ui';
 
-/** One uploaded file; a PDF may hold several documents (a cover letter followed by a CV). */
-export interface CvUpload { fileName: string; parts: { label: string; imported: Imported }[] }
+/** One uploaded file; a PDF may hold several documents (a cover letter followed by a CV). A Word file brings its own look. */
+export interface CvUpload { fileName: string; parts: { label: string; imported: Imported; look?: DocLook }[] }
 
 export const CV_ACCEPT = '.docx,.pdf,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document';
 const parseHtml = (h: string) => new DOMParser().parseFromString(h, 'text/html');
+
+const parseXml = (x: string) => new DOMParser().parseFromString(x, 'application/xml');
+
+/** the parts of a Word file that hold its look (text, styles, theme fonts); none if it can't be read */
+async function wordXml(file: File) {
+  try {
+    const { unzipSync, strFromU8 } = await import('fflate');
+    const parts = unzipSync(new Uint8Array(await file.arrayBuffer()), { filter: f => /^word\/(document|styles|theme\/theme1)\.xml$/.test(f.name) });
+    const text = (n: string) => (parts[n] ? strFromU8(parts[n]) : undefined);
+    const document = text('word/document.xml');
+    return document ? { document, styles: text('word/styles.xml'), theme: text('word/theme/theme1.xml') } : undefined;
+  } catch { return undefined; }
+}
 
 /** Reads a Word or PDF CV in the browser; nothing is uploaded anywhere. The readers load only now. */
 export async function readCvFile(file: File): Promise<CvUpload> {
   if (/\.docx$/i.test(file.name)) {
     const mammoth = (await import('mammoth')).default;
+    const xml = await wordXml(file);
+    // text that is bold through its paragraph style (a "Section" style, say) stays bold, so headings are found
+    const bold = xml?.styles ? boldParagraphStyles(xml.styles, parseXml).filter(n => !/['"\\]/.test(n)).map(n => `p[style-name='${n}'] => p:fresh > strong`) : [];
     const { value } = await mammoth.convertToHtml(
       { arrayBuffer: await file.arrayBuffer() },
       // Word's "Title" style is usually the name; pictures (photos, icons) are left out
-      { styleMap: ["p[style-name='Title'] => h1:fresh"], convertImage: mammoth.images.imgElement(async () => ({ src: '' })) },
+      { styleMap: ["p[style-name='Title'] => h1:fresh", ...bold], convertImage: mammoth.images.imgElement(async () => ({ src: '' })) },
     );
-    return { fileName: file.name, parts: [{ label: 'Document', imported: importDocxHtml(value, parseHtml) }] };
+    const imported = importDocxHtml(value, parseHtml);
+    const look = xml ? (() => { try { return readDocxLook(xml, imported.markdown, parseXml); } catch { return undefined; } })() : undefined;
+    return { fileName: file.name, parts: [{ label: 'Document', imported, look }] };
   }
   if (/\.pdf$/i.test(file.name) || file.type === 'application/pdf') {
     const pdfjs = await import('pdfjs-dist');
@@ -69,7 +88,7 @@ export function ImportReview({ upload, templates, onDone, onCancel }: {
         <span className="sp" />
         {Object.keys(done).length > 0 && <button className="btn sm" onClick={() => finish(done)}>Finish</button>}
       </div>}
-      <PartReview key={at} fileName={upload.fileName} label={multi ? upload.parts[at].label : ''} imported={upload.parts[at].imported}
+      <PartReview key={at} fileName={upload.fileName} label={multi ? upload.parts[at].label : ''} imported={upload.parts[at].imported} look={upload.parts[at].look}
         added={done[at]} onCancel={onCancel}
         onCreated={async (id, meta) => {
           const key = `${meta.kind}:${meta.lang}`;
@@ -83,24 +102,25 @@ export function ImportReview({ upload, templates, onDone, onCancel }: {
   );
 }
 
-function PartReview({ fileName, label, imported, added, onCreated, onCancel }: {
-  fileName: string; label: string; imported: Imported; added?: string;
+function PartReview({ fileName, label, imported, look, added, onCreated, onCancel }: {
+  fileName: string; label: string; imported: Imported; look?: DocLook; added?: string;
   onCreated: (id: string, meta: DocMeta) => void; onCancel: () => void;
 }) {
   const base = fileName.replace(/\.(docx|pdf)$/i, '');
   const [title, setTitle] = useState(label ? `${base} – ${label.split(' · ')[0]}` : base);
   const [kind, setKind] = useState<DocKind>(imported.kind);
   const [lang, setLang] = useState(imported.lang);
-  const [theme, setTheme] = useState('classic');
+  // a Word file keeps its own look; a PDF (text only) takes the closest of the app's looks
+  const [theme, setTheme] = useState(look ? 'original' : 'classic');
   const run = useAction();
 
   const finalMd = imported.markdown;
   const blocks = useMemo(() => parseBlocks(finalMd), [finalMd]);
-  const html = useMemo(() => renderDoc(blocks, theme, kind, lang), [blocks, theme, kind, lang]);
+  const html = useMemo(() => renderDoc(blocks, theme, kind, lang, {}, look), [blocks, theme, kind, lang]);
   const count = (t: string) => blocks.filter(b => b.type === t).length;
 
   async function create() {
-    const meta: DocMeta = { title: title.trim() || 'My document', kind, lang, theme };
+    const meta: DocMeta = { title: title.trim() || 'My document', kind, lang, theme, ...(theme === 'original' && look ? { look } : {}) };
     const r = await run(() => api.importTemplate(meta, finalMd), `Added "${meta.title}" to Documents`);
     if (r) onCreated(r.id, meta);
   }
@@ -119,8 +139,9 @@ function PartReview({ fileName, label, imported, added, onCreated, onCancel }: {
           <label className="f">Language<select className="input" value={lang} onChange={e => setLang(e.target.value)}>
             <option value="en">English</option><option value="de">Deutsch</option><option value="other">Other</option></select></label>
         </div>
-        <label className="f">Look (the closest to your original)<select className="input" value={theme} onChange={e => setTheme(e.target.value)}>
-          {Object.entries(THEMES).map(([k, t]) => <option key={k} value={k}>{t.name}</option>)}</select></label>
+        <label className="f">Look{look ? '' : ' (the closest to your original)'}<select className="input" value={theme} onChange={e => setTheme(e.target.value)}>
+          {Object.entries(THEMES).filter(([k]) => k !== 'original' || look).map(([k, t]) => <option key={k} value={k}>{t.name}</option>)}</select></label>
+        {look && theme === 'original' && <small className="muted" style={{ marginTop: -6 }}>Fonts, sizes, colours and spacing as in your file{look.body?.font ? ` (${look.body.font}${look.body.size ? `, ${look.body.size} pt` : ''})` : ''}.</small>}
         <div className="setup-actions" style={{ marginTop: 6 }}>
           <button className="btn" onClick={onCancel}>Cancel</button><span className="sp" />
           {added ? <span className="badge ok">✓ Added to Documents</span> : <button className="btn pri" onClick={create}>Add to Documents</button>}

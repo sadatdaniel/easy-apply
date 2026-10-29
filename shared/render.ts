@@ -1,5 +1,6 @@
 import type { Block } from './blocks';
-import type { DocKind, DocStyle } from './types';
+import { lookVars } from './look';
+import type { DocKind, DocLook, DocStyle } from './types';
 
 // Themes are CSS (web/src/themes.css). The only layout decision a theme makes here is
 // whether some sections move into a side column.
@@ -8,6 +9,7 @@ export const THEMES: Record<string, { name: string; layout: 'single' | 'sidebar'
   sidebar:  { name: 'Sidebar',  layout: 'sidebar', fonts: 'Poppins + Open Sans', note: 'Skills, education and languages in a side column.' },
   serif:    { name: 'Serif',    layout: 'single',  fonts: 'Fraunces + Source Serif', note: 'Calm and editorial.' },
   academic: { name: 'Academic', layout: 'single',  fonts: 'Times New Roman', note: 'Times 10pt with grey section rules.' },
+  original: { name: "Your file's own look", layout: 'single', fonts: 'From your file', note: 'The fonts, sizes and colours of the Word file you uploaded.' },
 };
 
 const SIDE_SECTIONS = /skill|education|certif|language|interest|fähigkeit|kenntnis|ausbildung|bildung|zertifikat|sprache/i;
@@ -75,25 +77,28 @@ function renderSections(blocks: Block[], from: number): Section[] {
 
 const sectionHtml = (s: Section) => s.idx < 0 ? s.html : `<section><h2${at(s.idx)}>${inline(s.title)}</h2>${s.html}</section>`;
 
-export function renderDoc(blocks: Block[], themeName: string, kind: DocKind, lang = 'en', style: DocStyle = {}): string {
+/** a document as its settings describe it */
+export const renderMeta = (blocks: Block[], m: { theme: string; kind: DocKind; lang: string; style?: DocStyle; look?: DocLook }) => renderDoc(blocks, m.theme, m.kind, m.lang, m.style, m.look);
+
+export function renderDoc(blocks: Block[], themeName: string, kind: DocKind, lang = 'en', style: DocStyle = {}, look?: DocLook): string {
   // the theme name ends up in a class attribute: only known names, never text from a file
   const theme = Object.hasOwn(THEMES, themeName) ? themeName : 'classic';
   const t = THEMES[theme];
   const html = kind === 'cover' ? renderLetter(blocks, theme, t.layout) : renderCV(blocks, theme, t.layout, lang);
-  return applyStyle(html, style);
+  return applyStyle(html, style, theme === 'original' ? lookVars(look) : '');
 }
 
 /** The formatting bar's whole-document settings become classes and CSS variables on the sheet (see themes.css). */
-function applyStyle(html: string, s: DocStyle): string {
+function applyStyle(html: string, s: DocStyle, lookCss = ''): string {
   // values come from a file's frontmatter: numbers within range and known words only
   const num = (v: unknown, lo: number, hi: number) => (typeof v === 'number' && v >= lo && v <= hi ? v : 0);
   const size = num(s.size, 70, 140), lh = num(s.lineHeight, 1, 2);
   const align = s.align === 'left' || s.align === 'justify' ? s.align : '';
   const margins = s.margins === 'narrow' || s.margins === 'wide' ? s.margins : '';
   const cls = [size && size !== 100 ? 'st-size' : '', lh ? 'st-lh' : '', align ? `st-${align}` : '', margins ? `st-${margins}` : ''].filter(Boolean);
-  if (!cls.length) return html;
-  const vars = [size ? `--st-size:${size / 100}` : '', lh ? `--st-lh:${lh}` : ''].filter(Boolean).join(';');
-  return html.replace(/^<div class="sheet ([^"]*)"/, `<div class="sheet $1 ${cls.join(' ')}"${vars ? ` style="${vars}"` : ''}`);
+  if (!cls.length && !lookCss) return html;
+  const vars = [lookCss, size ? `--st-size:${size / 100}` : '', lh ? `--st-lh:${lh}` : ''].filter(Boolean).join(';');
+  return html.replace(/^<div class="sheet ([^"]*)"/, `<div class="sheet $1${cls.length ? ' ' + cls.join(' ') : ''}"${vars ? ` style="${vars}"` : ''}`);
 }
 
 function renderCV(blocks: Block[], theme: string, layout: string, lang: string): string {

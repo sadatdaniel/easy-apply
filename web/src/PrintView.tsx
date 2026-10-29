@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { parseBlocks } from '@shared/blocks';
-import { renderDoc } from '@shared/render';
+import { renderMeta } from '@shared/render';
 import { api, type Doc } from './api';
 import { connect, unlock, type Conn } from './backend';
 import { pagedHtml } from './paginate';
@@ -22,7 +22,7 @@ export function PrintView() {
   // broken into pages where the editor shows the breaks, then the print dialog
   useEffect(() => {
     if (!docs?.length) return;
-    Promise.all(docs.map(d => pagedHtml(renderDoc(parseBlocks(d.body), d.meta.theme, d.meta.kind, d.meta.lang, d.meta.style)))).then(setPages);
+    Promise.all(docs.map(d => pagedHtml(renderMeta(parseBlocks(d.body), d.meta)))).then(setPages);
   }, [docs]);
   useEffect(() => { if (pages) document.fonts.ready.then(() => setTimeout(() => print(), 300)); }, [pages]);
 

@@ -124,6 +124,37 @@
 .t-academic.letter p { margin:0 0 12px; text-align:justify; }
 .t-academic.letter .subject { font-weight:700; margin:16px 0 12px; }
 
+/* ===== Your file's own look: fonts, sizes, colours and spacing read from the uploaded Word file =====
+   The values arrive as CSS variables on the page (shared/look.ts); each has a plain default. */
+.t-original { padding:48px var(--o-mx, 20mm); font-family:var(--o-font, Arimo, Arial, sans-serif); font-size:var(--o-size, 10.5pt); line-height:var(--o-lh, 1.25);
+  color:var(--o-color, #222); font-weight:var(--o-weight, 400); font-style:var(--o-style, normal); text-transform:var(--o-case, none); }
+.t-original h1 { font-family:var(--o-name-font, inherit); font-size:var(--o-name-size, 2em); color:var(--o-name-color, inherit); font-weight:var(--o-name-weight, 700);
+  font-style:var(--o-name-style, normal); text-transform:var(--o-name-case, none); margin:0 0 2px; line-height:1.15; }
+.t-original .tag { margin-bottom:2px; }
+.t-original .contact { display:flex; flex-wrap:wrap; column-gap:10px; }
+.t-original .contact span + span::before { content:"|"; margin-right:10px; opacity:.55; }
+.t-original header > .lh-rule { border-top:1px solid currentColor; opacity:.5; margin:8px 0 0; }
+.t-original .summary { margin:10px 0 0; text-align:var(--o-align, left); }
+.t-original h2 { font-family:var(--o-h-font, inherit); font-size:var(--o-h-size, 1.15em); color:var(--o-h-color, inherit); font-weight:var(--o-h-weight, 700);
+  font-style:var(--o-h-style, normal); text-transform:var(--o-h-case, none); margin:1.1em 0 .45em; border-bottom:var(--o-h-rule, 0); padding-bottom:var(--o-h-pad, 0); }
+.t-original .entry { display:grid; grid-template-columns:1fr auto; column-gap:12px; margin-bottom:.7em; }
+.t-original .eh { display:contents; }
+.t-original .et { font-family:var(--o-e-font, inherit); font-size:var(--o-e-size, inherit); color:var(--o-e-color, inherit); font-weight:var(--o-e-weight, 700); font-style:var(--o-e-style, normal); text-transform:var(--o-e-case, none); }
+.t-original .ed { text-align:right; white-space:nowrap; }
+.t-original .entry.has-org .et { grid-column:1 / -1; }
+.t-original .entry.has-org .ed { grid-row:2; grid-column:2; align-self:end; }
+.t-original .eo { grid-column:1; }
+.t-original .entry > ul { grid-column:1 / -1; margin-top:3px; }
+.t-original li { position:relative; padding-left:1.25em; margin-bottom:calc(var(--o-after, 0pt) / 3); text-align:var(--o-align, left); }
+.t-original li::before { content:""; position:absolute; left:.35em; top:.55em; width:.32em; height:.32em; border-radius:50%; background:currentColor; }
+.t-original section > p { margin:0 0 var(--o-after, 4pt); text-align:var(--o-align, left); }
+.t-original hr { border-top:1px solid currentColor; opacity:.45; margin:10px 0; }
+.t-original.letter .lh { margin-bottom:20px; }
+.t-original.letter h1 { font-size:var(--o-name-size, 1.5em); }
+.t-original.letter .lh-rule { border-top:1px solid currentColor; opacity:.4; margin:12px 0 0; }
+.t-original.letter p { margin:0 0 max(var(--o-after, 0pt), .8em); text-align:var(--o-align, left); }
+.t-original.letter .subject { font-weight:700; margin:18px 0 12px; }
+
 /* ---------- print: real A4 pages ---------- */
 @page { size:A4; margin:12mm 0; }
 @media print {

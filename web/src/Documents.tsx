@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { parseBlocks } from '@shared/blocks';
 import { EXAMPLES } from '@shared/examples';
-import { renderDoc } from '@shared/render';
+import { renderMeta } from '@shared/render';
 import type { AppState, DocKind, DocMeta, Job, TemplateInfo } from '@shared/types';
 import { api, type Doc } from './api';
 import { DocWorkspace, NameEdit, type DocStore } from './DocWorkspace';
@@ -92,7 +92,8 @@ export function DocumentsStep({ state, job, reload, active, setActive, next, bac
     if (!part) return undefined;
     const kind = want === 'any' ? part.imported.kind : want;
     const title = f.name.replace(/\.[^.]+$/, '');
-    const r = await run(() => api.importTemplate({ title, kind, lang: part.imported.lang, theme: 'classic' }, part.imported.markdown), `Added "${title}" to Documents`);
+    const look = part.look ? { theme: 'original', look: part.look } : { theme: 'classic' };
+    const r = await run(() => api.importTemplate({ title, kind, lang: part.imported.lang, ...look }, part.imported.markdown), `Added "${title}" to Documents`);
     return (r as { id?: string } | undefined)?.id;
   }
 
@@ -160,7 +161,7 @@ export function DocumentsStep({ state, job, reload, active, setActive, next, bac
 
 /* ---------------- small previews ---------------- */
 export function MiniDoc({ doc }: { doc: { meta: DocMeta; body: string } }) {
-  const html = useMemo(() => renderDoc(parseBlocks(doc.body), doc.meta.theme, doc.meta.kind, doc.meta.lang, doc.meta.style), [doc.body, doc.meta]);
+  const html = useMemo(() => renderMeta(parseBlocks(doc.body), doc.meta), [doc.body, doc.meta]);
   return <div dangerouslySetInnerHTML={{ __html: html }} />;
 }
 
