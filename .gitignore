@@ -7,3 +7,4 @@ samples/
 Thumbs.db
 *.log
 design/redesign-preview/
+.wrangler/
