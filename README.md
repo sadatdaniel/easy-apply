@@ -6,6 +6,12 @@ After a few weeks of job hunting, the files pile up: `CV_final.docx`, `CV_final_
 
 Easy Apply keeps it all in order. Think in folders and files: every application gets its own folder, holding the posting, the exact CV and letter you sent, every earlier version, and where things stand.
 
+## Get started
+
+**Open [easy-apply.sadatdaniel.workers.dev](https://easy-apply.sadatdaniel.workers.dev) in Chrome or Edge.** Nothing to install, no account: choose where to keep your files, upload your CV and cover letter, and Easy Apply guides you through the rest.
+
+After the first visit it also works offline (that first visit downloads the whole app, about 7 MB, so give it a minute), and you can install it as an app from the address bar.
+
 ![An application in its own window: its files in a strip, the one you picked open for editing](docs/screenshots/applications.png)
 
 ## One place for every application
@@ -76,11 +82,9 @@ LM Studio works the same way: turn on CORS in its server settings.
 - Photos and other images inside a CV are left out; the text comes through.
 - Designer templates built from floating text boxes come in as text, but may need their order and headings fixed by hand.
 
-## Get started
+## Run it yourself
 
-Open **[easy-apply.sadatdaniel.workers.dev](https://easy-apply.sadatdaniel.workers.dev)** in Chrome or Edge. Nothing to install: choose where to keep your files, upload your CV and cover letter, and Easy Apply guides you through the rest. After the first visit it also works offline (the first visit downloads the whole app, about 5 MB, so give it a minute), and you can install it as an app from the address bar.
-
-**Run it yourself:** you need [Node.js](https://nodejs.org) (version 20 or newer).
+You need [Node.js](https://nodejs.org) (version 20 or newer).
 
 ```bash
 npm install
