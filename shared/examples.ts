@@ -85,7 +85,9 @@ University of Hamburg
 
 const LETTER = `# Alex Example
 
-alex@example.com · +49 151 000 0000 · Hamburg
+Data Engineer
+
++49 151 000 0000 | alex@example.com | github.com/alex-example | Hamburg
 
 ---
 
@@ -113,7 +115,7 @@ const LOOKS: [theme: string, name: string, note: string][] = [
   ['classic', 'Classic', 'Clean and compact, with a slim header line.'],
   ['sidebar', 'Two-column', 'Skills, education and languages in a coloured side column.'],
   ['serif', 'Elegant', 'A calm serif, centred header, warm accents.'],
-  ['academic', 'Traditional', 'Times, with a grey line between sections.'],
+  ['academic', 'Academic', 'Times, with a grey line between sections.'],
 ];
 
 export const EXAMPLES: Example[] = LOOKS.flatMap(([theme, name, note]) => [

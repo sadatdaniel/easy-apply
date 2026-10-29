@@ -96,15 +96,21 @@ export function importDocxHtml(html: string, parse: ParseHtml): Imported {
   // a letter has no sections or job entries: its bold lines (company, subject) stay bold text
   const letter = LETTER.test(body.textContent ?? '');
 
-  for (const el of [...body.children]) {
+  const handle = (el: Element): void => {
     const tag = el.tagName;
-    if (tag === 'HR') { push({ type: 'hr', text: '' }); continue; }
+    if (tag === 'HR') { push({ type: 'hr', text: '' }); return; }
+    // a layout table (a photo beside the name and contact lines, two columns): a cell holds several lines;
+    // its cells are read as text, in order, rather than as "Company | dates" rows
+    if (tag === 'TABLE' && [...el.querySelectorAll('td, th')].some(c => [...c.children].filter(k => clean(k.textContent ?? '')).length > 1)) {
+      for (const c of [...el.querySelectorAll('tr')].flatMap(r => [...r.children])) for (const k of [...c.children]) handle(k);
+      return;
+    }
     if (tag === 'TABLE' && letter) {
       for (const row of [...el.querySelectorAll('tr')]) {
         const t = [...row.children].map(c => clean(inlineMd(c))).filter(Boolean).join(' ');
         if (t) push({ type: 'p', text: t });
       }
-      continue;
+      return;
     }
     if (tag === 'TABLE') {
       for (const row of [...el.querySelectorAll('tr')]) {
@@ -125,7 +131,7 @@ export function importDocxHtml(html: string, parse: ParseHtml): Imported {
           push({ type: 'p', text: last });
         } else push({ type: 'p', text: cells[0] });
       }
-      continue;
+      return;
     }
     if (tag === 'UL' || tag === 'OL') {
       for (const li of [...el.querySelectorAll(':scope > li')]) {
@@ -133,34 +139,35 @@ export function importDocxHtml(html: string, parse: ParseHtml): Imported {
         const t = clean(inlineMd(li)).replace(/^([^*:\[\]]{2,32}):\s+(?=\S)/, (m, label: string) => (label.split(/\s+/).length <= 4 ? `**${label}:** ` : m));
         if (t) push({ type: 'li', text: t });
       }
-      continue;
+      return;
     }
     const md = clean(inlineMd(el));
-    if (!md) continue;
+    if (!md) return;
     if (/^H[1-6]$/.test(tag)) {
       const level = Number(tag[1]);
       const t = unbold(md);
       if (level === 1 && !blocks.some(b => b.type === 'h1')) { push({ type: 'h1', text: t }); found.name ||= t.replace(/\*/g, ''); }
       else if (level <= 2 || isSection(t)) { push({ type: 'h2', text: t }); sawSection = true; }
       else { flushTitle(); pendingTitle = t; }
-      continue;
+      return;
     }
     // name: the first bold line before anything else
     if (!blocks.length && pendingTitle === null && allBold(md) && unbold(md).split(/\s+/).length <= 6) {
-      blocks.push({ type: 'h1', text: unbold(md) }); found.name = unbold(md); continue;
+      blocks.push({ type: 'h1', text: unbold(md) }); found.name = unbold(md); return;
     }
-    if (!sawSection && looksLikeContact(md)) { contactLine(md.split(/\s*\|\s*/)); continue; }
+    if (!sawSection && looksLikeContact(md)) { contactLine(md.split(/\s*\|\s*/)); return; }
     if (allBold(md) && unbold(md).length <= 80 && !letter) {
       const t = unbold(md);
       if (isSection(t)) { push({ type: 'h2', text: t.replace(/[:：]$/, '') }); sawSection = true; }
       else { flushTitle(); pendingTitle = t; }
-      continue;
+      return;
     }
     // "Job title<TAB>dates" written as one line
     const tab = el.textContent?.split(/\t+|\s{3,}/).map(clean).filter(Boolean) ?? [];
-    if (tab.length === 2 && DATE_RANGE.test(tab[1]) && tab[0].length <= 90) { push({ type: 'h3', text: `${tab[0]} | ${tab[1]}` }); continue; }
+    if (tab.length === 2 && DATE_RANGE.test(tab[1]) && tab[0].length <= 90) { push({ type: 'h3', text: `${tab[0]} | ${tab[1]}` }); return; }
     push({ type: 'p', text: md });
-  }
+  };
+  for (const el of [...body.children]) handle(el);
   flushTitle();
 
   const text = blocks.map(b => b.text).join(' ');

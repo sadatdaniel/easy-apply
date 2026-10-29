@@ -2,8 +2,9 @@ import { useMemo, useState } from 'react';
 import { parseBlocks } from '@shared/blocks';
 import { importDocxHtml, type Imported } from '@shared/docx';
 import { pdfItems, pdfToHtml } from '@shared/pdftext';
-import { renderDoc, THEMES } from '@shared/render';
+import { renderDoc } from '@shared/render';
 import { boldParagraphStyles, readDocxLook } from '@shared/docxlook';
+import { readPdfLook } from '@shared/pdflook';
 import type { DocKind, DocLook, DocMeta, TemplateInfo } from '@shared/types';
 import { api } from './api';
 import { useAction } from './ui';
@@ -51,14 +52,17 @@ export async function readCvFile(file: File): Promise<CvUpload> {
     catch (e) {
       throw new Error((e as Error).name === 'PasswordException' ? 'This PDF is password-protected. Remove the password, or upload the Word file.' : 'This PDF could not be read. Upload the Word file instead.');
     }
-    const parts = pdfToHtml(await pdfItems(doc as never)).filter(p => p.html.trim());
+    const items = await pdfItems(doc as never);
+    const parts = pdfToHtml(items).filter(p => p.html.trim());
     if (!parts.length) throw new Error('This PDF has no text in it (it is a scan or an image). Upload the Word file instead.');
     return {
       fileName: file.name,
       parts: parts.map(p => {
         const imported = importDocxHtml(p.html, parseHtml);
         const what = imported.kind === 'cover' ? 'Cover letter' : imported.kind === 'cv' ? 'CV' : 'Document';
-        return { label: `${what} · page${p.pages.length > 1 ? `s ${p.pages[0]}–${p.pages[p.pages.length - 1]}` : ` ${p.pages[0]}`}`, imported };
+        let look: DocLook | undefined;
+        try { look = readPdfLook(p.pages.map(n => items[n - 1] ?? []), imported.markdown); } catch { /* a look is a bonus */ }
+        return { label: `${what} · page${p.pages.length > 1 ? `s ${p.pages[0]}–${p.pages[p.pages.length - 1]}` : ` ${p.pages[0]}`}`, imported, look };
       }),
     };
   }
@@ -110,8 +114,8 @@ function PartReview({ fileName, label, imported, look, added, onCreated, onCance
   const [title, setTitle] = useState(label ? `${base} – ${label.split(' · ')[0]}` : base);
   const [kind, setKind] = useState<DocKind>(imported.kind);
   const [lang, setLang] = useState(imported.lang);
-  // a Word file keeps its own look; a PDF (text only) takes the closest of the app's looks
-  const [theme, setTheme] = useState(look ? 'original' : 'classic');
+  // a file keeps its own look; the app's looks are examples, for starting without a file
+  const theme = look ? 'original' : 'classic';
   const run = useAction();
 
   const finalMd = imported.markdown;
@@ -139,9 +143,7 @@ function PartReview({ fileName, label, imported, look, added, onCreated, onCance
           <label className="f">Language<select className="input" value={lang} onChange={e => setLang(e.target.value)}>
             <option value="en">English</option><option value="de">Deutsch</option><option value="other">Other</option></select></label>
         </div>
-        <label className="f">Look{look ? '' : ' (the closest to your original)'}<select className="input" value={theme} onChange={e => setTheme(e.target.value)}>
-          {Object.entries(THEMES).filter(([k]) => k !== 'original' || look).map(([k, t]) => <option key={k} value={k}>{t.name}</option>)}</select></label>
-        {look && theme === 'original' && <small className="muted" style={{ marginTop: -6 }}>Fonts, sizes, colours and spacing as in your file{look.body?.font ? ` (${look.body.font}${look.body.size ? `, ${look.body.size} pt` : ''})` : ''}.</small>}
+        {look && <small className="muted">Keeps the look of your file{look.body?.font ? `: ${look.body.font}${look.body.size ? `, ${look.body.size} pt` : ''}` : ''}.</small>}
         <div className="setup-actions" style={{ marginTop: 6 }}>
           <button className="btn" onClick={onCancel}>Cancel</button><span className="sp" />
           {added ? <span className="badge ok">✓ Added to Documents</span> : <button className="btn pri" onClick={create}>Add to Documents</button>}

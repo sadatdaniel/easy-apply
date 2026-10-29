@@ -52,6 +52,19 @@ export function DocumentsStep({ state, job, reload, active, setActive, next, bac
     setOrder(null);
   }
   const sort = useSortable(files, 'x', reorder);
+  // the strip runs sideways, so the mouse wheel does too (a passive React listener can't stop the page scrolling)
+  const strip = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = strip.current;
+    if (!el) return;
+    const wheel = (e: WheelEvent) => {
+      if (Math.abs(e.deltaY) <= Math.abs(e.deltaX) || el.scrollWidth <= el.clientWidth) return;
+      e.preventDefault();
+      el.scrollLeft += e.deltaY;
+    };
+    el.addEventListener('wheel', wheel, { passive: false });
+    return () => el.removeEventListener('wheel', wheel);
+  }, []);
   const kindOf = (n: string): DocKind | 'file' => (isFile(n) ? 'file' : docs[n]?.meta.kind ?? 'other');
   const has = (k: DocKind) => files.some(n => kindOf(n) === k);
   const current = active && files.includes(active) ? active : files[0] ?? null;
@@ -111,16 +124,16 @@ export function DocumentsStep({ state, job, reload, active, setActive, next, bac
 
   return (
     <>
-      <div className={'strip' + (over ? ' over' : '') + (sort.dragging ? ' sorting' : '')}
+      <div ref={strip} className={'strip' + (over ? ' over' : '') + (sort.dragging ? ' sorting' : '')}
         onDragOver={e => { if (e.dataTransfer.types.includes('Files')) { e.preventDefault(); setOver(true); } }}
         onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setOver(false); }}
         onDrop={e => { e.preventDefault(); setOver(false); drop(e.dataTransfer.files); }}>
         {files.map(n => (
           <button key={n} {...sort.item(n)} className={'scard' + (n === current ? ' on' : '') + (job.bucket.includes(n) ? '' : ' off')}
             onClick={() => { if (!sort.clickWasDrag()) setActive(n); }}
-            onContextMenu={e => cardMenu(n, e)} title={`${n} · drag to change the order they are sent in`}>
+            onContextMenu={e => cardMenu(n, e)} title={`${n} · drag to change the order they are exported in`}>
             <span className="th">{isFile(n) ? <FileThumb job={job.id} name={n} /> : docs[n] && <MiniDoc doc={docs[n]} />}</span>
-            <span className="tx"><b>{docs[n]?.meta.title ?? n}</b><small>{job.bucket.includes(n) ? `${KIND[kindOf(n)]} · ${n}` : 'left out of sending'}</small></span>
+            <span className="tx"><b>{docs[n]?.meta.title ?? n}</b><small>{job.bucket.includes(n) ? `${KIND[kindOf(n)]} · ${n}` : 'left out of the export'}</small></span>
             <span className="more" role="button" aria-label="More" data-nodrag onClick={e => cardMenu(n, e)}>⋯</span>
           </button>
         ))}
@@ -149,7 +162,7 @@ export function DocumentsStep({ state, job, reload, active, setActive, next, bac
       )}
 
       <div className="pf"><span className="muted">{files.length} file{files.length === 1 ? '' : 's'} in this application · right-click a file to replace or remove it</span><span className="sp" />
-        <button className="btn" onClick={back}>← Back</button><button className="btn pri" onClick={next} disabled={!files.length}>Send →</button></div>
+        <button className="btn" onClick={back}>← Back</button><button className="btn pri" onClick={next} disabled={!files.length}>Export →</button></div>
 
       {picker && <Picker state={state} want={picker.want} replacing={picker.replace} inJob={job}
         onClose={() => setPicker(null)} importDoc={importDoc}

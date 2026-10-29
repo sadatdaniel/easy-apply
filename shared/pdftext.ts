@@ -10,7 +10,7 @@
     - consecutive full-width lines with the same left edge and size are one wrapped paragraph
     - a line in a bold font is bold; the largest line at the top of a document is the name
 */
-export interface PdfItem { str: string; x: number; y: number; w: number; size: number; bold: boolean }
+export interface PdfItem { str: string; x: number; y: number; w: number; size: number; bold: boolean; font?: string }
 export interface PdfPart { pages: number[]; html: string }
 
 interface Line { x: number; y: number; right: number; size: number; bold: boolean; cells: string[]; page: number }
@@ -134,7 +134,7 @@ export async function pdfItems(doc: PdfJsDoc, maxPages = 12): Promise<PdfItem[][
       .filter(i => typeof i.str === 'string' && Array.isArray(i.transform))
       .map(i => {
         const font = i.fontName && page.commonObjs.has(i.fontName) ? page.commonObjs.get(i.fontName).name ?? '' : '';
-        return { str: i.str!, x: i.transform![4], y: i.transform![5], w: i.width ?? 0, size: Math.abs(i.transform![3]) || Math.abs(i.transform![0]), bold: /bold|black|heavy|semibold|demi/i.test(font) };
+        return { str: i.str!, x: i.transform![4], y: i.transform![5], w: i.width ?? 0, size: Math.abs(i.transform![3]) || Math.abs(i.transform![0]), bold: /bold|black|heavy|semibold|demi/i.test(font), font };
       }));
   }
   return pages;

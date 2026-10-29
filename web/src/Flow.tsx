@@ -7,7 +7,7 @@ import { buildBundle, bundleZip, download, pdfReady, safe, type Bundle } from '.
 import { useSortable } from './sortable';
 import { DownloadIcon, Dot, Keywords, STATUS, StatusMenu, useAction, useToast } from './ui';
 
-export const STEPS = ['Posting & details', 'Documents', 'Send'];
+export const STEPS = ['Posting & details', 'Documents', 'Export'];
 
 /** where you left an application (step and file), per browser, so opening it again continues there */
 const RESUME = 'easy-apply:resume:';
@@ -24,7 +24,7 @@ export function stepDone(i: number, job: Job | null) {
 }
 
 /**
-  One application, start to finish, in its own window: the posting, its documents, sending. While it is open
+  One application, start to finish, in its own window: the posting, its documents, the export. While it is open
   the rest of the app waits behind it; minimise it to a bar (like an email being written) to look something
   up, then bring it back. Everything saves as you go, so closing loses nothing.
 */
@@ -273,7 +273,7 @@ function SendStep({ job, docs, state, reload, back }: { job: Job; docs: Doc[]; s
 
   return (
     <>
-      <div className="ph"><div className="step">Step 3 of 3</div><h2>Send</h2><p>Drag or use the arrows to set the order. The merged PDF, the zip and the preview all follow it. Each file can also be downloaded on its own.</p></div>
+      <div className="ph"><div className="step">Step 3 of 3</div><h2>Export</h2><p>Drag or use the arrows to set the order. The merged PDF, the zip and the preview all follow it. Each file can also be downloaded on its own.</p></div>
       <div className="pb bk">
         <div className={sort.dragging ? 'sorting-list' : ''}>
           {order.map((n, i) => (
@@ -285,7 +285,7 @@ function SendStep({ job, docs, state, reload, back }: { job: Job; docs: Doc[]; s
               <button className="btn sm" disabled={i === order.length - 1} onClick={() => move(i, 1)} title="Move down" aria-label="Move down">↓</button>
               <button className="btn sm" title={n.endsWith('.md') ? 'Download this document as a PDF' : 'Download this file'} disabled={n.endsWith('.md') && !bundle?.parts.some(p => p.name === n)}
                 onClick={() => downloadOne(n)} aria-label={`Download ${n}`}><DownloadIcon size={14} /></button>
-              <button className="btn sm" onClick={() => save(order.filter(x => x !== n))} title="Leave out of what you send (stays in the folder)">Leave out</button>
+              <button className="btn sm" onClick={() => save(order.filter(x => x !== n))} title="Leave out of the export (stays in the folder)">Leave out</button>
             </div>
           ))}
           {!order.length && <p className="muted">Nothing to send yet. Add documents in step 2.</p>}

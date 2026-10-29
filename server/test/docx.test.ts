@@ -66,4 +66,16 @@ describe('docx import', () => {
     const longer = toPlaceholders('# Khan Alex Example\n\nalex@example.com', profile);
     expect(longer.markdown.startsWith('# Khan Alex Example')).toBe(true); // a different full name is kept
   });
+
+  it('a layout table (photo beside the name and contact lines) is read as text, not as job rows', () => {
+    const r = md(`
+      <table><tr><td><p><img src=""></p></td><td><p><strong>Jamie Sample</strong></p><p>Projektmanagerin</p><p>Musterstraße 1, 20095 Hamburg</p><p>+49 170 000 0000 | jamie@example.com</p></td></tr></table>
+      <p><strong>Berufserfahrung</strong></p><p><strong>Projektmanagerin</strong></p><ul><li>Leitung von 12 Projekten</li></ul>`);
+    const lines = r.markdown.split('\n').filter(Boolean);
+    expect(lines[0]).toBe('# Jamie Sample');
+    expect(lines).toContain('Projektmanagerin');
+    expect(r.markdown).toContain('+49 170 000 0000 | jamie@example.com');
+    expect(r.markdown).toContain('## Berufserfahrung');
+    expect(r.markdown).not.toMatch(/Jamie Sample.*Projektmanagerin.*Musterstra/);
+  });
 });
