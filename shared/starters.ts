@@ -1,14 +1,14 @@
 import type { DocMeta } from './types';
 
-// Starter templates offered during onboarding. Generic on purpose: placeholders come from the
-// profile and the job; everything else is example text the user replaces once in the template.
+// Starter layouts offered during onboarding, for people without a CV file. Example text you replace once;
+// letters keep the job's placeholders ({{company}} …), which every application fills in.
 export interface Starter { id: string; meta: DocMeta; body: string; note: string }
 
-const CV_EN = `# {{name}}
+const CV_EN = `# Your Name
 
-{{tagline}}
+Your headline, e.g. Data Analyst
 
-{{phone}} | {{email}} | {{website}} | {{location}}
++49 170 000 0000 | you@example.com | yourwebsite.com | City
 
 Two or three sentences about who you are, what you are good at and what you are looking for.
 
@@ -42,11 +42,11 @@ University, City
 - German – B1
 `;
 
-const CV_DE = `# {{name}}
+const CV_DE = `# Your Name
 
-{{tagline}}
+Your headline, e.g. Data Analyst
 
-{{phone}} | {{email}} | {{website}} | {{location}}
++49 170 000 0000 | you@example.com | yourwebsite.com | City
 
 Zwei, drei Sätze dazu, wer Sie sind, was Sie gut können und was Sie suchen.
 
@@ -74,10 +74,10 @@ Hochschule, Ort
 - Englisch – C1
 `;
 
-const COVER_EN = `# {{name}}
+const COVER_EN = `# Your Name
 
-{{location}}
-{{phone}} · {{email}}
+City
++49 170 000 0000 · you@example.com
 
 ---
 
@@ -101,13 +101,13 @@ Why {{company}}: something specific about the company, product or team.
 I would welcome the chance to talk about how I can contribute. Thank you for your time.
 
 Kind regards,
-{{name}}
+Your Name
 `;
 
-const COVER_DE = `# {{name}}
+const COVER_DE = `# Your Name
 
-{{location}}
-{{phone}} · {{email}}
+City
++49 170 000 0000 · you@example.com
 
 ---
 
@@ -131,7 +131,7 @@ Warum {{company}}: etwas Konkretes über das Unternehmen, Produkt oder Team.
 Über eine Einladung zu einem persönlichen Gespräch freue ich mich.
 
 Mit freundlichen Grüßen
-{{name}}
+Your Name
 `;
 
 export const STARTERS: Starter[] = [

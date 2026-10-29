@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { THEMES } from '@shared/render';
 import { mainIds } from '@shared/store';
-import { CLOSED, STATUSES, type AppState, type DocMeta, type TemplateInfo, type Job, type Profile, type Status } from '@shared/types';
+import { CLOSED, STATUSES, type AppState, type DocMeta, type TemplateInfo, type Job, type Status } from '@shared/types';
 import { api, helperRunning, lastBackup } from './api';
 import { download } from './exporter';
 import { ACCENTS, applyAppearance, loadAppearance, LOOKS, type AccentId, type Appearance, type LookId } from './appearance';
@@ -132,13 +132,12 @@ export function MyCv({ state, refresh }: { state: AppState; refresh: () => Promi
           <button className="btn sm" style={{ flex: 1 }} onClick={() => create('cover')}>+ Cover letter</button>
         </div>
         <details className="muted" style={{ fontSize: 12, padding: '10px 6px' }}>
-          <summary>Placeholders</summary>
-          From your Profile:<br />{state.profile.fields.map(f => <code key={f.key} style={{ display: 'inline-block', marginRight: 6 }}>{`{{${f.key}}}`}</code>)}
-          <br /><br />From the job:<br />{['company', 'job_title', 'job_location', 'today'].map(k => <code key={k} style={{ display: 'inline-block', marginRight: 6 }}>{`{{${k}}}`}</code>)}
+          <summary>Placeholders in letters</summary>
+          Filled in from each job when you add the letter to an application:<br />{['company', 'job_title', 'job_location', 'today'].map(k => <code key={k} style={{ display: 'inline-block', marginRight: 6 }}>{`{{${k}}}`}</code>)}
         </details>
       </div>
       <div className="content" style={{ background: 'var(--bg)' }}>
-        {upload ? <ImportReview upload={upload} profile={state.profile} templates={state.templates}
+        {upload ? <ImportReview upload={upload} templates={state.templates}
           onCancel={() => setUpload(null)} onDone={async newId => { setUpload(null); await refresh(); setId(newId); }} />
         : t && id ? <DocWorkspace key={id} doc={t} onSaved={d => { setT(d); refresh(); }}
             store={{ save: async (body, meta) => {
@@ -183,34 +182,6 @@ export function Extras({ state, refresh }: { state: AppState; refresh: () => Pro
       </div>
       <div className="drop" onClick={() => input.current?.click()} onDragOver={e => e.preventDefault()} onDrop={e => { e.preventDefault(); upload(e.dataTransfer.files); }}>
         Drop files here, or <u>browse</u>.<input ref={input} type="file" multiple hidden onChange={e => upload(e.target.files)} />
-      </div>
-    </div>
-  );
-}
-
-/* ---------------- profile ---------------- */
-export function ProfileView({ state, refresh }: { state: AppState; refresh: () => Promise<void> }) {
-  const [p, setP] = useState<Profile>(state.profile);
-  const run = useAction();
-  const set = (i: number, k: 'key' | 'label' | 'value', v: string) => setP(x => ({ fields: x.fields.map((f, j) => j === i ? { ...f, [k]: v } : f) }));
-  return (
-    <div className="page-v">
-      <h1>Profile</h1>
-      <p className="muted" style={{ maxWidth: 640 }}>These values fill the <code>{'{{placeholders}}'}</code> in your CV and letters when they are copied into an application. After that, each application's copy is plain text you can change freely, e.g. a different headline or German level for one job.</p>
-      <div style={{ marginTop: 20, maxWidth: 900 }}>
-        <div className="fieldrow muted" style={{ fontSize: 12 }}><span>Placeholder</span><span>Label</span><span>Value</span><span /></div>
-        {p.fields.map((f, i) => (
-          <div className="fieldrow" key={i}>
-            <input className="input" value={f.key} onChange={e => set(i, 'key', e.target.value)} />
-            <input className="input" value={f.label} onChange={e => set(i, 'label', e.target.value)} />
-            <input className="input" value={f.value} onChange={e => set(i, 'value', e.target.value)} />
-            <button className="btn sm" title="Remove" onClick={() => setP(x => ({ fields: x.fields.filter((_, j) => j !== i) }))}>×</button>
-          </div>
-        ))}
-        <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-          <button className="btn" onClick={() => setP(x => ({ fields: [...x.fields, { key: 'new_field', label: 'New field', value: '' }] }))}>+ Add placeholder</button>
-          <button className="btn pri" onClick={async () => { const r = await run(() => api.saveProfile(p), 'Profile saved'); if (r) { setP(r); refresh(); } }}>Save profile</button>
-        </div>
       </div>
     </div>
   );

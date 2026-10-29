@@ -28,6 +28,8 @@ export function DocumentsStep({ state, job, reload, active, setActive, next, bac
   const [picker, setPicker] = useState<{ want: Want; replace?: string } | null>(null);
   const [menu, setMenu] = useState<{ x: number; y: number; items: MenuItem[] } | null>(null);
   const [over, setOver] = useState(false);
+  const [order, setOrder] = useState<string[] | null>(null); // while a card is dragged
+  const dragged = useRef<string | null>(null);
   const run = useAction();
   const toast = useToast();
 
@@ -40,7 +42,16 @@ export function DocumentsStep({ state, job, reload, active, setActive, next, bac
   }, [job.id, job.docs.join('|')]);
 
   // the strip follows the send order, then anything not in it
-  const files = [...job.bucket.filter(n => job.docs.includes(n) || job.extras.includes(n)), ...[...job.docs, ...job.extras].filter(n => !job.bucket.includes(n))];
+  const saved = [...job.bucket.filter(n => job.docs.includes(n) || job.extras.includes(n)), ...[...job.docs, ...job.extras].filter(n => !job.bucket.includes(n))];
+  const files = order ?? saved;
+  async function reorder() {
+    const next = order;
+    dragged.current = null;
+    if (!next || next.join('|') === saved.join('|')) { setOrder(null); return; }
+    await run(() => api.setBucket(job.id, next.filter(n => job.bucket.includes(n))));
+    await reload();
+    setOrder(null);
+  }
   const kindOf = (n: string): DocKind | 'file' => (isFile(n) ? 'file' : docs[n]?.meta.kind ?? 'other');
   const has = (k: DocKind) => files.some(n => kindOf(n) === k);
   const current = active && files.includes(active) ? active : files[0] ?? null;
@@ -100,13 +111,26 @@ export function DocumentsStep({ state, job, reload, active, setActive, next, bac
   return (
     <>
       <div className={'strip' + (over ? ' over' : '')}
-        onDragOver={e => { if (e.dataTransfer.types.includes('Files')) { e.preventDefault(); setOver(true); } }}
+        onDragOver={e => { if (e.dataTransfer.types.includes('Files') && !dragged.current) { e.preventDefault(); setOver(true); } }}
         onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setOver(false); }}
-        onDrop={e => { e.preventDefault(); setOver(false); drop(e.dataTransfer.files); }}>
+        onDrop={e => { e.preventDefault(); setOver(false); if (dragged.current) reorder(); else drop(e.dataTransfer.files); }}>
         {files.map(n => (
-          <button key={n} className={'scard' + (n === current ? ' on' : '')} onClick={() => setActive(n)} onContextMenu={e => cardMenu(n, e)} title={n}>
+          <button key={n} className={'scard' + (n === current ? ' on' : '') + (dragged.current === n ? ' dragging' : '') + (job.bucket.includes(n) ? '' : ' off')}
+            onClick={() => setActive(n)} onContextMenu={e => cardMenu(n, e)} title={`${n} · drag to change the order they are sent in`}
+            draggable onDragStart={e => { dragged.current = n; e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', n); setOrder(saved); }}
+            onDragOver={e => {
+              const d = dragged.current;
+              if (!d) return;
+              e.preventDefault();
+              if (d === n) return;
+              const r = e.currentTarget.getBoundingClientRect();
+              const o = files.filter(x => x !== d);
+              o.splice(o.indexOf(n) + (e.clientX > r.left + r.width / 2 ? 1 : 0), 0, d);
+              if (o.join('|') !== files.join('|')) setOrder(o);
+            }}
+            onDragEnd={() => { if (dragged.current) reorder(); }}>
             <span className="th">{isFile(n) ? <FileThumb job={job.id} name={n} /> : docs[n] && <MiniDoc doc={docs[n]} />}</span>
-            <span className="tx"><b>{docs[n]?.meta.title ?? n}</b><small>{KIND[kindOf(n)]} · {n}</small></span>
+            <span className="tx"><b>{docs[n]?.meta.title ?? n}</b><small>{job.bucket.includes(n) ? `${KIND[kindOf(n)]} · ${n}` : 'left out of sending'}</small></span>
             <span className="more" role="button" aria-label="More" onClick={e => cardMenu(n, e)}>⋯</span>
           </button>
         ))}

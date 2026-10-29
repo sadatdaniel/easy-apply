@@ -6,12 +6,12 @@ import { Connect, Onboarding } from './Setup';
 import { UpdateBanner } from './Update';
 import { useAiStatus } from './aiStatus';
 import { Applications } from './Applications';
-import { FlowWindow, STEPS } from './Flow';
+import { FlowWindow, resumeOf, STEPS } from './Flow';
 import { useAction } from './ui';
-import { Extras, MyCv, ProfileView, Settings, Tracker } from './Views';
+import { Extras, MyCv, Settings, Tracker } from './Views';
 
-type View = 'apps' | 'templates' | 'extras' | 'profile' | 'tracker' | 'settings';
-const VIEWS: [View, string][] = [['apps', 'Applications'], ['templates', 'My documents'], ['extras', 'Extras'], ['profile', 'Profile'], ['tracker', 'Tracker'], ['settings', 'Settings']];
+type View = 'apps' | 'templates' | 'extras' | 'tracker' | 'settings';
+const VIEWS: [View, string][] = [['apps', 'Applications'], ['templates', 'My documents'], ['extras', 'Extras'], ['tracker', 'Tracker'], ['settings', 'Settings']];
 
 /*
   The view, the picked application and its window live in the URL hash, so reloads and Back/Forward keep your
@@ -68,8 +68,9 @@ function Main({ changeFolder }: { changeFolder: () => void }) {
   /** opens an application's window (at a step, with a file picked); a window already open is replaced: it saved as it went */
   const open = (job: string, step?: number, doc?: string) => {
     const j = state?.jobs.find(x => x.id === job);
-    setFirstDoc(doc ?? null);
-    setNav(n => ({ ...n, view: 'apps', job, step: step ?? (j ? 1 : 0), min: false }));
+    const was = step === undefined && j ? resumeOf(job) : null;
+    setFirstDoc(doc ?? was?.doc ?? null);
+    setNav(n => ({ ...n, view: 'apps', job, step: step ?? was?.step ?? (j ? 1 : 0), min: false }));
   };
   const flowJob = nav.job && nav.step !== null ? nav.job : null;
 
@@ -90,7 +91,6 @@ function Main({ changeFolder }: { changeFolder: () => void }) {
       {nav.view === 'tracker' && <Tracker state={state} refresh={refresh} open={id => open(id, 0)} />}
       {nav.view === 'templates' && <MyCv state={state} refresh={refresh} />}
       {nav.view === 'extras' && <Extras state={state} refresh={refresh} />}
-      {nav.view === 'profile' && <ProfileView state={state} refresh={refresh} />}
       {nav.view === 'settings' && <Settings state={state} refresh={refresh} changeFolder={changeFolder} />}
       {flowJob && <FlowWindow key={flowJob === 'new' ? 'new' : 'job'} state={state} refresh={refresh} jobId={flowJob} step={nav.step!} min={nav.min} firstDoc={firstDoc}
         setFlow={f => setNav(n => ({ ...n, job: f.job ?? n.job, step: f.step ?? n.step, min: f.min ?? n.min, view: f.min === false ? 'apps' : n.view }))}

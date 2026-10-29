@@ -110,6 +110,30 @@ export function createStore(fs: Fs) {
   async function ensureRoot() {
     for (const p of Object.values(D)) await fs.mkdir(p);
     if (!(await fs.exists(PROFILE))) await writeJson(fs, PROFILE, DEFAULT_PROFILE);
+    await fillPersonalPlaceholders();
+  }
+
+  /**
+    Earlier versions wrote your details as {{name}}, {{email}} … into CVs and letters, filled from the profile.
+    Your details are now plain text in your documents; this writes them in once, everywhere they are used.
+    The job's placeholders ({{company}} …) stay: they are what makes one letter reusable.
+  */
+  async function fillPersonalPlaceholders() {
+    const profile = await readJson<Profile & { placeholdersFilled?: string }>(fs, PROFILE, DEFAULT_PROFILE);
+    if (profile.placeholdersFilled) return;
+    const values = Object.fromEntries(profile.fields.filter(f => f.value.trim()).map(f => [f.key, f.value]));
+    const personal = new RegExp(`\\{\\{\\s*(${Object.keys(values).map(k => k.replace(/[^\w.-]/g, '')).join('|') || '(?!)'})\\s*\\}\\}`, 'g');
+    const fix = async (path: string) => {
+      const text = await fs.read(path).catch(() => null);
+      if (text === null) return;
+      const next = text.replace(personal, (_, k: string) => values[k]);
+      if (next !== text) await fs.write(path, next);
+    };
+    for (const f of await fs.list(D.templates)) if (f.kind === 'file' && f.name.endsWith('.md')) await fix(join(D.templates, f.name));
+    for (const j of await fs.list(D.jobs)) if (j.kind === 'dir') {
+      for (const f of await fs.list(join(D.jobs, j.name)).catch(() => [])) if (f.kind === 'file' && f.name.endsWith('.md') && f.name !== 'posting.md') await fix(join(D.jobs, j.name, f.name));
+    }
+    await writeJson(fs, PROFILE, { ...profile, placeholdersFilled: new Date().toISOString() });
   }
 
   /** onboarding: copy the chosen starter templates in, in the chosen theme (existing files are kept) */

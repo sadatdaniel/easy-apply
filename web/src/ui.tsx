@@ -13,6 +13,13 @@ export const STATUS: Record<Status, { label: string; color: string; ask?: string
 
 export const Dot = ({ s }: { s: Status }) => <span className="dot" style={{ background: STATUS[s].color }} />;
 
+/** an arrow into a tray */
+export const DownloadIcon = ({ size = 15 }: { size?: number }) => (
+  <svg className="ico" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M12 3.5v11.5" /><path d="m7 10.5 5 5 5-5" /><path d="M4.5 19.5h15" />
+  </svg>
+);
+
 /* ---------- toast ---------- */
 type ToastFn = (msg: string, err?: boolean) => void;
 const ToastCtx = createContext<ToastFn>(() => {});

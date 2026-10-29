@@ -1,8 +1,8 @@
 import { useMemo, useRef, useState } from 'react';
-import { fillPlaceholders, parseBlocks } from '@shared/blocks';
+import { parseBlocks } from '@shared/blocks';
 import { renderDoc, THEMES } from '@shared/render';
 import { STARTERS } from '@shared/starters';
-import type { AppState, Profile } from '@shared/types';
+import type { AppState } from '@shared/types';
 import { api } from './api';
 import { canPickFolder, isBrave, pickFolder, unlock, useBrowserStorage, type Conn } from './backend';
 import { useAction } from './ui';
@@ -61,16 +61,15 @@ export function Connect({ conn, setConn }: { conn: Conn; setConn: (c: Conn) => v
   );
 }
 
-const STEPS = ['Look', 'Your CV', 'About you', 'AI'];
+const STEPS = ['Look', 'Your CV', 'AI'];
 
 /**
-  Questions for a fresh folder: the look, your CV (it fills in your details), your details, an AI provider.
+  Questions for a fresh folder: the look, your CV and letter, an AI provider.
   The CV comes first because everything is built on it: each application starts from it, and AI suggestions
   only rephrase what is in it.
 */
 export function Onboarding({ state, done }: { state: AppState; done: () => void }) {
   const [step, setStep] = useState(0);
-  const [profile, setProfile] = useState<Profile>(state.profile);
   const [templates, setTemplates] = useState(state.templates);
   const [layouts, setLayouts] = useState(false);
   const [picked, setPicked] = useState<string[]>(['cv-en', 'cover-en']);
@@ -85,22 +84,15 @@ export function Onboarding({ state, done }: { state: AppState; done: () => void 
     if (u) setUpload(u);
   }
 
-  const values = useMemo(() => Object.fromEntries(profile.fields.map(f => [f.key, f.value])), [profile]);
-  const set = (key: string, value: string) => setProfile(p => ({ fields: p.fields.map(f => f.key === key ? { ...f, value } : f) }));
-  const preview = useMemo(() => {
-    const body = fillPlaceholders(STARTERS[0].body, values);
-    return renderDoc(parseBlocks(body), theme, 'cv', 'en');
-  }, [values, theme]);
+  const preview = useMemo(() => renderDoc(parseBlocks(STARTERS[0].body), theme, 'cv', 'en'), [theme]);
 
   async function next() {
     if (step === 1 && layouts && picked.length && !(await run(async () => { await api.addStarters(picked, theme); return true; }))) return;
-    if (step === 2 && !(await run(() => api.saveProfile(profile)))) return;
-    if (step === 3) return done();
+    if (step === 2) return done();
     setStep(step + 1);
   }
 
-  const name = values.name?.trim();
-  const canContinue = step === 1 ? added.length > 0 || (layouts && picked.length > 0) : step === 2 ? !!name : true;
+  const canContinue = step === 1 ? added.length > 0 || (layouts && picked.length > 0) : true;
   return (
     <div className="setup">
       <div className="setup-card wide">
@@ -112,17 +104,17 @@ export function Onboarding({ state, done }: { state: AppState; done: () => void 
           <div style={{ marginTop: 16 }}><AppearancePicker /></div>
         </>}
 
-        {step === 1 && upload && <ImportReview upload={upload} profile={profile} templates={templates}
+        {step === 1 && upload && <ImportReview upload={upload} templates={templates}
           onCancel={() => setUpload(null)}
           onDone={async () => {
             setAdded(a => [...a, upload.fileName]); setUpload(null);
-            // the CV may have filled in your details, and may now be your main CV
-            const st = await run(() => api.state()); if (st) { setProfile(st.profile); setTemplates(st.templates); }
+            // it may now be your main CV
+            const st = await run(() => api.state()); if (st) setTemplates(st.templates);
           }} />}
 
         {step === 1 && !upload && <>
           <h1>Your CV</h1>
-          <p className="muted">Easy Apply tailors your CV and cover letter to every job you apply for. Suggestions only rephrase what is in your CV, matched to each posting, so start with your real ones. Your CV also fills in your details for you.</p>
+          <p className="muted">Easy Apply tailors your CV and cover letter to every job you apply for. Suggestions only rephrase what is in your CV, matched to each posting, so start with your real ones.</p>
           <div className="cv-drop" onDragOver={e => e.preventDefault()} onDrop={e => { e.preventDefault(); pick(e.dataTransfer.files[0]); }}>
             <b>{added.length ? 'Add another file' : 'Upload your CV and cover letter'}</b>
             <span className="muted">Word (.docx) or PDF, one file each or both in one PDF. They are read in this browser; nothing is uploaded anywhere.{added.length ? ' A second language version works too.' : ''}</span>
@@ -134,7 +126,7 @@ export function Onboarding({ state, done }: { state: AppState; done: () => void 
             ? <button className="link" style={{ marginTop: 12, fontSize: 13 }} onClick={() => setLayouts(true)}>No CV file yet? Start from a layout instead…</button>
             : <div className="setup-split" style={{ marginTop: 16 }}>
                 <div>
-                  <p className="muted" style={{ fontSize: 12.5, marginTop: 0 }}>Example layouts with placeholders. Replace the example text once under My documents; every application starts from it.</p>
+                  <p className="muted" style={{ fontSize: 12.5, marginTop: 0 }}>Example layouts. Replace the example text once under My documents; then pick it for any application.</p>
                   {STARTERS.map(s => (
                     <label key={s.id} className="check">
                       <input type="checkbox" checked={picked.includes(s.id)} onChange={e => setPicked(p => e.target.checked ? [...p, s.id] : p.filter(x => x !== s.id))} />
@@ -151,17 +143,6 @@ export function Onboarding({ state, done }: { state: AppState; done: () => void 
         </>}
 
         {step === 2 && <>
-          <h1>About you</h1>
-          <p className="muted">{added.length ? 'Filled in from your CV where possible. ' : ''}These fill the <code>{'{{placeholders}}'}</code> in your CV and letters. Each application gets its own copy, so you can still change anything per job. You can edit or add fields later under Profile.</p>
-          <div className="setup-form">
-            {profile.fields.map(f => (
-              <label key={f.key} className="f">{f.label}
-                <input className="input" value={f.value} onChange={e => set(f.key, e.target.value)} placeholder={PH[f.key] ?? ''} autoFocus={f.key === 'name'} /></label>
-            ))}
-          </div>
-        </>}
-
-        {step === 3 && <>
           <h1>AI (optional)</h1>
           <p className="muted">AI fills in job details from a posting and suggests tailored wording, which you accept or reject line by line. Use a model on this computer (Ollama, LM Studio) or your own key for OpenRouter, OpenAI or Gemini. Keys stay in this browser.</p>
           <FirstProvider onSaved={() => done()} />
@@ -171,15 +152,13 @@ export function Onboarding({ state, done }: { state: AppState; done: () => void 
         <div className="setup-actions">
           {step > 0 && !upload && <button className="btn" onClick={() => setStep(step - 1)}>Back</button>}
           <span className="sp" />
-          {step === 3 && <button className="btn" onClick={done}>Skip for now</button>}
-          {step < 3 && !upload && <button className="btn pri" disabled={!canContinue} onClick={next}>Continue</button>}
+          {step === 2 && <button className="btn" onClick={done}>Skip for now</button>}
+          {step < 2 && !upload && <button className="btn pri" disabled={!canContinue} onClick={next}>Continue</button>}
         </div>
       </div>
     </div>
   );
 }
-
-const PH: Record<string, string> = { name: 'Alex Example', tagline: 'Data Analyst', email: 'alex@example.com', phone: '+49 …', website: 'github.com/alex', location: 'Berlin' };
 
 /** a value with a Copy button, for things the user has to paste elsewhere */
 function CopyField({ text }: { text: string }) {

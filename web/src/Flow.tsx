@@ -1,12 +1,22 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { parseBlocks } from '@shared/blocks';
 import { THEMES } from '@shared/render';
 import type { AppState, ExtractedFields, Job, JobFields } from '@shared/types';
 import { api, type Doc, type JobDetail } from './api';
 import { DocumentsStep } from './Documents';
 import { buildBundle, bundleZip, download, pdfReady, safe, type Bundle } from './exporter';
-import { Dot, Keywords, STATUS, StatusMenu, useAction, useToast } from './ui';
+import { DownloadIcon, Dot, Keywords, STATUS, StatusMenu, useAction, useToast } from './ui';
 
 export const STEPS = ['Posting & details', 'Documents', 'Send'];
+
+/** where you left an application (step and file), per browser, so opening it again continues there */
+const RESUME = 'easy-apply:resume:';
+export function resumeOf(id: string): { step: number; doc: string | null } | null {
+  try { const r = JSON.parse(localStorage.getItem(RESUME + id) ?? 'null'); return r && typeof r.step === 'number' ? r : null; } catch { return null; }
+}
+function keepResume(id: string, step: number, doc: string | null) {
+  try { localStorage.setItem(RESUME + id, JSON.stringify({ step, doc })); } catch { /* private window: just don't remember */ }
+}
 
 export function stepDone(i: number, job: Job | null) {
   if (!job) return false;
@@ -34,6 +44,7 @@ export function FlowWindow({ state, refresh, jobId, step, min, firstDoc, setFlow
   }, [jobId]);
   // every step reads the folder fresh, so a change made in one step shows in the next
   useEffect(() => { load(); }, [load, step]);
+  useEffect(() => { if (jobId !== 'new') keepResume(jobId, step, activeDoc); }, [jobId, step, activeDoc]);
 
   // only details that belong to this application: right after "+ New application" (or switching jobs)
   // the previous job's details are still loaded, and must not leak into the new form
@@ -202,12 +213,13 @@ const pick = (j: Job): JobFields => ({ title: j.title, company: j.company, locat
 /* ---------------- step 3: send ---------------- */
 function SendStep({ job, docs, state, reload, back }: { job: Job; docs: Doc[]; state: AppState; reload: () => Promise<void>; back: () => void }) {
   const [order, setOrder] = useState(job.bucket);
-  const [exportName, setExportName] = useState(job.exportName || defaultExportName(state, job));
+  const [exportName, setExportName] = useState(job.exportName || defaultExportName(docs, job));
   const [helper, setHelper] = useState<boolean | null>(null);
   const [bundle, setBundle] = useState<Bundle | null>(null);
   const [busy, setBusy] = useState('');
   const [err, setErr] = useState('');
   const [previewUrl, setPreviewUrl] = useState('');
+  const [showPreview, setShowPreview] = useState(false);
   const dragged = useRef<string | null>(null);
   const run = useAction();
   useEffect(() => setOrder(job.bucket), [job.bucket.join('|')]);
@@ -218,7 +230,7 @@ function SendStep({ job, docs, state, reload, back }: { job: Job; docs: Doc[]; s
   const move = (i: number, d: number) => { const o = [...order]; [o[i], o[i + d]] = [o[i + d], o[i]]; save(o); };
   const docOf = (n: string) => docs.find(d => d.name === n);
   const printable = order.filter(n => n.endsWith('.md'));
-  const author = state.profile.fields.find(f => f.key === 'name')?.value ?? '';
+  const author = nameIn(docs.filter(d => order.includes(d.name)));
   const file = (exportName.trim() || 'Application').replace(/[\\/:*?"<>|]+/g, '_');
   const unfilled = [...new Set(printable.flatMap(n => [...(docOf(n)?.body ?? '').matchAll(/\{\{\s*([\w.-]+)\s*\}\}/g)].map(m => m[1])))];
 
@@ -281,7 +293,7 @@ function SendStep({ job, docs, state, reload, back }: { job: Job; docs: Doc[]; s
               <button className="btn sm" disabled={i === 0} onClick={() => move(i, -1)} title="Move up" aria-label="Move up">↑</button>
               <button className="btn sm" disabled={i === order.length - 1} onClick={() => move(i, 1)} title="Move down" aria-label="Move down">↓</button>
               <button className="btn sm" title={n.endsWith('.md') ? 'Download this document as a PDF' : 'Download this file'} disabled={n.endsWith('.md') && !bundle?.parts.some(p => p.name === n)}
-                onClick={() => downloadOne(n)}>⬇</button>
+                onClick={() => downloadOne(n)} aria-label={`Download ${n}`}><DownloadIcon size={14} /></button>
               <button className="btn sm" onClick={() => save(order.filter(x => x !== n))} title="Leave out of what you send (stays in the folder)">Leave out</button>
             </div>
           ))}
@@ -301,8 +313,9 @@ function SendStep({ job, docs, state, reload, back }: { job: Job; docs: Doc[]; s
             Creating PDFs needs the small local helper, which prints with the Edge or Chrome on this computer. Run <code>npm start</code> (or <code>npm run dev</code>) in the app folder, then <button className="link" onClick={() => pdfReady().then(setHelper)}>check again</button>.
           </div>}
           <button className="btn pri" disabled={!bundle || !!busy} onClick={async () => { await keepName(); download(bundle!.pdf, `${file}.pdf`); }}>
-            ⬇ Download one PDF{bundle ? ` (${bundle.pages} page${bundle.pages === 1 ? '' : 's'})` : ''}</button>
-          <button className="btn" disabled={!bundle || !!busy} onClick={async () => { await keepName(); download(await bundleZip(bundle!, file), `${file}.zip`); }}>⬇ Download zip</button>
+            <DownloadIcon /> Download one PDF{bundle ? ` (${bundle.pages} page${bundle.pages === 1 ? '' : 's'})` : ''}</button>
+          <button className="btn" disabled={!bundle || !!busy} onClick={async () => { await keepName(); download(await bundleZip(bundle!, file), `${file}.zip`); }}><DownloadIcon /> Download zip</button>
+          {helper && order.length > 0 && <button className="btn" disabled={!bundle} onClick={() => setShowPreview(p => !p)}>{showPreview ? 'Hide the preview' : 'Preview the PDF'}</button>}
           <span className="muted" style={{ fontSize: 12 }}>The zip holds the merged PDF and each file on its own, numbered in this order. The PDFs have real text, so job portals can read them.</span>
           {skipped.map(x => <div key={x.name} className="muted" style={{ fontSize: 12 }}><b>{x.name}</b>: {x.note}.</div>)}
           {unfilled.length > 0 && <div className="note" style={{ fontSize: 12.5 }}>Still unfilled: {unfilled.map(u => <code key={u}>{`{{${u}}}`} </code>)}. They would appear as written.</div>}
@@ -312,7 +325,7 @@ function SendStep({ job, docs, state, reload, back }: { job: Job; docs: Doc[]; s
             ? <button className="btn" onClick={async () => { if (await run(() => api.setStatus(job.id, 'applied'), 'Marked as applied. Follow-up reminder in 7 days.')) reload(); }}>✓ Mark as applied today</button>
             : <span className="badge ok" style={{ alignSelf: 'flex-start' }}><Dot s={job.status} /> {STATUS[job.status].label}{job.next ? ` · ${job.next}` : ''}</span>}
         </div>
-        {order.length > 0 && helper && <div className="bundle">
+        {showPreview && order.length > 0 && helper && <div className="bundle">
           <div className="bundle-h"><b>Preview</b>{bundle && <span className="muted"> · {bundle.pages} page{bundle.pages === 1 ? '' : 's'}, exactly as it will be sent</span>}
             <span className="sp" />{busy && <span className="muted"><span className="spin" /> {busy}</span>}</div>
           {err ? <div className="error">{err}</div>
@@ -325,7 +338,14 @@ function SendStep({ job, docs, state, reload, back }: { job: Job; docs: Doc[]; s
   );
 }
 
-function defaultExportName(state: AppState, job: Job) {
-  const name = state.profile.fields.find(f => f.key === 'name')?.value ?? '';
+/** your name, as the first line of your CV (or letter) has it */
+function nameIn(docs: Doc[]) {
+  const d = docs.find(x => x.meta.kind === 'cv') ?? docs[0];
+  const first = d ? parseBlocks(d.body).find(b => b.type === 'h1') : undefined;
+  return first ? first.text.replace(/[*_[\]]|\(.*?\)|\{\{.*?\}\}/g, '').trim() : '';
+}
+
+function defaultExportName(docs: Doc[], job: Job) {
+  const name = nameIn(docs);
   return [name, job.company, 'Application'].filter(Boolean).join('_').replace(/[^\p{L}\p{N}_-]+/gu, '_');
 }

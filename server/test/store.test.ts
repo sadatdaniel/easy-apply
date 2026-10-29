@@ -19,7 +19,7 @@ describe('jobs', () => {
     expect(job.id).toMatch(/^\d{4}-\d\d-\d\d_acme-gmbh_data-engineer$/);
     const name = await store.addDocFromTemplate(job.id, 'cover-en');
     const doc = await store.getDoc(job.id, name);
-    expect(doc.body).toContain('# Alex Example');
+    expect(doc.body).toContain('# Your Name');
     expect(doc.body).toContain('Application for Data Engineer (m/w/d)');
     expect(doc.body).not.toContain('{{company}}');
     expect((await store.getJob(job.id)).bucket).toEqual([name]);
@@ -137,7 +137,7 @@ describe('names and paths', () => {
     await store.trashTemplate('cv-en');
     expect((await store.listTemplates()).map(t => t.id)).not.toContain('cv-en');
     expect(await fs.exists('.trash/templates/cv-en.md')).toBe(true);
-    expect((await store.getDoc(j.id, name)).body).toContain('Alex Example');
+    expect((await store.getDoc(j.id, name)).body).toContain('# Your Name');
   });
 });
 
@@ -205,5 +205,24 @@ describe('documents in an application', () => {
     await store.trashTemplate('cv-en');
     await expect(store.saveTemplate('cv-en', t.meta, t.body)).rejects.toThrow(/not found/);
     expect((await store.listTemplates()).map(x => x.id)).not.toContain('cv-en');
+  });
+});
+
+describe('your details are plain text', () => {
+  it('fills the old {{name}} … placeholders in once, everywhere, and leaves the job ones', async () => {
+    const f = memFs(); const st = createStore(f);
+    await f.mkdir('profile');
+    await f.write('profile/profile.json', JSON.stringify({ fields: [{ key: 'name', label: 'Name', value: 'Alex Example' }, { key: 'phone', label: 'Phone', value: '' }] }));
+    await f.write('templates/letter.md', '---\ntitle: L\nkind: cover\n---\n# {{name}}\n\n{{phone}}\n\nDear {{company}} team\n');
+    await f.write('jobs/2026-01-01_x_y/job.json', JSON.stringify({ id: '2026-01-01_x_y', docs: ['cv.md'] }));
+    await f.write('jobs/2026-01-01_x_y/cv.md', '---\ntitle: C\nkind: cv\n---\n# {{ name }}\n');
+    await st.ensureRoot();
+    const letter = await st.getTemplate('letter');
+    expect(letter.body).toBe('# Alex Example\n\n{{phone}}\n\nDear {{company}} team\n'); // an empty value stays, to be typed over
+    expect((await st.getDoc('2026-01-01_x_y', 'cv.md')).body).toBe('# Alex Example\n');
+    // once only: a {{name}} written later on purpose stays as it is
+    await st.saveTemplate('letter', letter.meta, '# {{name}}\n');
+    await st.ensureRoot();
+    expect((await st.getTemplate('letter')).body).toBe('# {{name}}\n');
   });
 });

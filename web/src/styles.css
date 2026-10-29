@@ -488,3 +488,11 @@ table.t tr.closed td { color:var(--muted); }
 .ov-posting { white-space:pre-wrap; font-size:13px; line-height:1.55; color:var(--muted); background:var(--bg); border-radius:var(--radius); padding:14px 16px; max-height:320px; overflow:auto; }
 .ov-file .ic { width:26px; height:32px; border-radius:2px; background:var(--paper); border:1px solid var(--line); font-size:8px; font-weight:700; color:var(--muted); display:grid; place-items:center; flex:none; }
 .ov-file .ic.md { color:var(--accent-fg); } .ov-file .ic.pdf { color:var(--pdf); }
+.ico { vertical-align:-2px; flex:none; }
+.btn .ico + * , .btn .ico { margin-right:0; }
+.btn.sm:has(> .ico:only-child) { padding:4px 8px; display:inline-grid; place-items:center; }
+.btn.tailor { font-weight:700; letter-spacing:.01em; }
+.btn.tailor.on { background:var(--accent-soft); color:var(--accent-text); border-color:var(--accent); box-shadow:inset 0 0 0 1px var(--accent); }
+.scard.dragging { opacity:.45; }
+.scard.off { opacity:.6; }
+.scard[draggable="true"] { cursor:grab; }

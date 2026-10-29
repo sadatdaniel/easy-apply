@@ -1,10 +1,10 @@
 import { useMemo, useState } from 'react';
 import { parseBlocks } from '@shared/blocks';
-import { importDocxHtml, toPlaceholders, type Imported } from '@shared/docx';
+import { importDocxHtml, type Imported } from '@shared/docx';
 import { findLetterDetails, generalizeLetter, LETTER_FIELDS, type LetterDetails } from '@shared/letter';
 import { pdfItems, pdfToHtml } from '@shared/pdftext';
 import { renderDoc, THEMES } from '@shared/render';
-import type { DocKind, DocMeta, Profile, TemplateInfo } from '@shared/types';
+import type { DocKind, DocMeta, TemplateInfo } from '@shared/types';
 import { api } from './api';
 import { useAction } from './ui';
 
@@ -48,19 +48,16 @@ export async function readCvFile(file: File): Promise<CvUpload> {
   throw new Error('Choose a Word (.docx) or PDF file.');
 }
 
-const FOUND_KEYS = ['name', 'email', 'phone', 'website', 'location'] as const;
-
 /**
   Review what was read from an uploaded file before adding it to My documents. A PDF with several documents
   is reviewed part by part. A CV becomes the main CV of its language if that language has none yet.
 */
-export function ImportReview({ upload, profile, templates, onDone, onCancel }: {
-  upload: CvUpload; profile: Profile; templates: TemplateInfo[];
+export function ImportReview({ upload, templates, onDone, onCancel }: {
+  upload: CvUpload; templates: TemplateInfo[];
   onDone: (lastId: string) => void; onCancel: () => void;
 }) {
   const [at, setAt] = useState(0);
   const [done, setDone] = useState<Record<number, string>>({});
-  const [prof, setProf] = useState(profile);
   const [mains, setMains] = useState(() => new Set(templates.filter(t => t.main).map(t => `${t.kind}:${t.lang}`)));
   const multi = upload.parts.length > 1;
   const finish = (ids: Record<number, string>) => { const last = Object.values(ids).pop(); last ? onDone(last) : onCancel(); };
@@ -73,10 +70,9 @@ export function ImportReview({ upload, profile, templates, onDone, onCancel }: {
         <span className="sp" />
         {Object.keys(done).length > 0 && <button className="btn sm" onClick={() => finish(done)}>Finish</button>}
       </div>}
-      <PartReview key={at} fileName={upload.fileName} label={multi ? upload.parts[at].label : ''} imported={upload.parts[at].imported} profile={prof}
+      <PartReview key={at} fileName={upload.fileName} label={multi ? upload.parts[at].label : ''} imported={upload.parts[at].imported}
         added={done[at]} onCancel={onCancel}
-        onCreated={async (id, meta, newProfile) => {
-          setProf(newProfile);
+        onCreated={async (id, meta) => {
           const key = `${meta.kind}:${meta.lang}`;
           if ((meta.kind === 'cv' || meta.kind === 'cover') && !mains.has(key)) { await api.setMain(id); setMains(m => new Set(m).add(key)); }
           const next = { ...done, [at]: id };
@@ -88,41 +84,30 @@ export function ImportReview({ upload, profile, templates, onDone, onCancel }: {
   );
 }
 
-function PartReview({ fileName, label, imported, profile, added, onCreated, onCancel }: {
-  fileName: string; label: string; imported: Imported; profile: Profile; added?: string;
-  onCreated: (id: string, meta: DocMeta, profile: Profile) => void; onCancel: () => void;
+function PartReview({ fileName, label, imported, added, onCreated, onCancel }: {
+  fileName: string; label: string; imported: Imported; added?: string;
+  onCreated: (id: string, meta: DocMeta) => void; onCancel: () => void;
 }) {
   const base = fileName.replace(/\.(docx|pdf)$/i, '');
   const [title, setTitle] = useState(label ? `${base} – ${label.split(' · ')[0]}` : base);
   const [kind, setKind] = useState<DocKind>(imported.kind);
   const [lang, setLang] = useState(imported.lang);
   const [theme, setTheme] = useState('classic');
-  const [usePh, setUsePh] = useState(true);
-  // empty profile fields the CV can fill (new users start with an empty profile)
-  const fillable = FOUND_KEYS.filter(k => imported.found[k] && !profile.fields.find(f => f.key === k)?.value.trim());
-  const [fill, setFill] = useState(fillable.length > 0);
   // a letter written for one job: its company, role, date and place become placeholders for every next job
   const [reuse, setReuse] = useState(true);
   const [details, setDetails] = useState<LetterDetails>(() => findLetterDetails(imported.markdown));
   const run = useAction();
 
-  const effective: Profile = useMemo(() => !fill ? profile : {
-    fields: profile.fields.map(f => (fillable.includes(f.key as typeof FOUND_KEYS[number]) ? { ...f, value: imported.found[f.key as typeof FOUND_KEYS[number]] } : f)),
-  }, [fill, profile]);
-  const result = useMemo(() => (usePh ? toPlaceholders(imported.markdown, effective) : { markdown: imported.markdown, replaced: [] }), [usePh, effective]);
-  const letter = useMemo(() => (kind === 'cover' && reuse ? generalizeLetter(result.markdown, details) : null), [kind, reuse, result.markdown, details]);
-  const finalMd = letter?.markdown ?? result.markdown;
+  const letter = useMemo(() => (kind === 'cover' && reuse ? generalizeLetter(imported.markdown, details) : null), [kind, reuse, details]);
+  const finalMd = letter?.markdown ?? imported.markdown;
   const blocks = useMemo(() => parseBlocks(finalMd), [finalMd]);
   const html = useMemo(() => renderDoc(blocks, theme, kind, lang), [blocks, theme, kind, lang]);
   const count = (t: string) => blocks.filter(b => b.type === t).length;
-  const profileName = effective.fields.find(f => f.key === 'name')?.value.trim();
-  const nameKept = usePh && profileName && blocks[0]?.type === 'h1' && blocks[0].text !== '{{name}}';
 
   async function create() {
-    if (fill && fillable.length && !(await run(() => api.saveProfile(effective)))) return;
     const meta: DocMeta = { title: title.trim() || 'My document', kind, lang, theme };
     const r = await run(() => api.importTemplate(meta, finalMd), `Added "${meta.title}" to My documents`);
-    if (r) onCreated(r.id, meta, fill ? effective : profile);
+    if (r) onCreated(r.id, meta);
   }
 
   return (
@@ -141,12 +126,6 @@ function PartReview({ fileName, label, imported, profile, added, onCreated, onCa
         </div>
         <label className="f">Design<select className="input" value={theme} onChange={e => setTheme(e.target.value)}>
           {Object.entries(THEMES).map(([k, t]) => <option key={k} value={k}>{t.name}</option>)}</select></label>
-        {fillable.length > 0 && <label className="check"><input type="checkbox" checked={fill} onChange={e => setFill(e.target.checked)} />
-          <span><b>Fill my empty profile fields from this {kind === 'cover' ? 'letter' : 'CV'}</b><small>{fillable.map(k => `${k}: ${imported.found[k]}`).join(' · ')}</small></span></label>}
-        <label className="check"><input type="checkbox" checked={usePh} onChange={e => setUsePh(e.target.checked)} />
-          <span><b>Use placeholders for my details</b><small>{usePh
-            ? result.replaced.length ? `Replaced: ${result.replaced.map(k => `{{${k}}}`).join(' ')}. They fill in from your profile in every copy.` : 'None of your profile values appear in the header.'
-            : 'Your details stay as written.'}</small></span></label>
         {kind === 'cover' && <div className="reuse">
           <label className="check" style={{ padding: 0, border: 0 }}><input type="checkbox" checked={reuse} onChange={e => setReuse(e.target.checked)} />
             <span><b>Reuse for other jobs</b><small>These were written for one job. They become placeholders that every new application fills in; check what was found.</small></span></label>
@@ -155,7 +134,6 @@ function PartReview({ fileName, label, imported, profile, added, onCreated, onCa
               <input className="input" value={details[f.key]} placeholder="not found" onChange={e => setDetails(d => ({ ...d, [f.key]: e.target.value }))} /></label>
           ))}
         </div>}
-        {nameKept && <div className="note" style={{ fontSize: 12 }}>The name here differs from your profile ("{profileName}"), so it stays as written.</div>}
         <div className="setup-actions" style={{ marginTop: 6 }}>
           <button className="btn" onClick={onCancel}>Cancel</button><span className="sp" />
           {added ? <span className="badge ok">✓ Added to My documents</span> : <button className="btn pri" onClick={create}>Add to My documents</button>}

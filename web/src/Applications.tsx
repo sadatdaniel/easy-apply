@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import type { AppState, Job } from '@shared/types';
 import { api, lastBackup, type JobDetail } from './api';
 import { download } from './exporter';
+import { resumeOf } from './Flow';
 
 /** for browser storage: one click to save a backup, right where the applications are */
 function BackupNudge() {
@@ -63,7 +64,7 @@ function Overview({ job, open, refresh }: { job: Job; open: Props['open']; refre
         </div>
         <span className="sp" />
         <button className="pill" onClick={e => setMenu(e.currentTarget.getBoundingClientRect())}><Dot s={job.status} />{STATUS[job.status].label} ▾</button>
-        <button className="btn pri" onClick={() => open(job.id, 1)}>{files.length ? 'Open application' : 'Choose documents'} →</button>
+        <button className="btn pri" onClick={() => open(job.id)}>{resumeOf(job.id) ? 'Continue' : files.length ? 'Open application' : 'Choose documents'} →</button>
       </div>
       {job.next && <div className="note" style={{ margin: '0 0 16px' }}>Next: <b>{job.next}</b></div>}
       <div className="grp" style={{ paddingLeft: 0 }}>In this folder</div>

@@ -89,12 +89,12 @@ export function DocWorkspace({ doc: initial, store, head, tools, onSaved, margin
         {head?.(doc.meta, setMeta)}
         <span className="sp" />
         <span className="muted" style={{ fontSize: 12 }}>{saving === 'saving' ? 'Saving…' : saving === 'dirty' ? 'Unsaved' : 'Saved'}</span>
+        {store.tailor && <button className={'btn sm pri tailor' + (tailorMode ? ' on' : '')} disabled={!!preview} title="Click a line to get a version tailored to this job, then accept or reject it" onClick={() => setTailorMode(t => !t)}>{tailorMode ? '✨ Tailoring · click a line' : '✨ Tailor to this job'}</button>}
         <select className="input" style={{ width: 'auto', padding: '5px 8px' }} value={doc.meta.theme} onChange={e => setMeta({ theme: e.target.value })} aria-label="Design">
           {Object.entries(THEMES).map(([k, t]) => <option key={k} value={k}>Design: {t.name}</option>)}
         </select>
         {tools}
         {store.print && <button className="btn sm" onClick={async () => { await flush(); store.print!(); }}>Print / PDF</button>}
-        {store.tailor && <button className={'btn sm' + (tailorMode ? ' pri' : '')} disabled={!!preview} title="Click a line to get a version tailored to this job, then accept or reject it" onClick={() => setTailorMode(t => !t)}>{tailorMode ? '✨ Tailoring: on' : '✨ Tailor'}</button>}
       </div>
       <div className="edwrap">
         <div style={{ minWidth: 0 }}>
@@ -122,7 +122,7 @@ export function DocWorkspace({ doc: initial, store, head, tools, onSaved, margin
             </div>
           )}
           {match && match.score === null && <div className="card muted" style={{ fontSize: 12.5 }}>Add key requirements in step 1 to see a keyword match here.</div>}
-          {unfilled.length > 0 && <div className="note" style={{ fontSize: 12.5 }}>Not filled in: {unfilled.map(u => <code key={u}>{`{{${u}}}`} </code>)}<br />Type over them on the page, or set them in Profile.</div>}
+          {store.keywords && unfilled.length > 0 && <div className="note" style={{ fontSize: 12.5 }}>Not filled in: {unfilled.map(u => <code key={u}>{`{{${u}}}`} </code>)}<br />Type over them on the page.</div>}
           {store.versions && (
             <div className="card"><h4>Versions</h4>
               <div className="vlist">
