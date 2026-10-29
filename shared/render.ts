@@ -112,7 +112,8 @@ function renderCV(blocks: Block[], theme: string, layout: string, lang: string):
       if (summary.length && summary[summary.length - 1].startsWith('<ul')) summary[summary.length - 1] = summary[summary.length - 1].replace(/<\/ul>$/, li + '</ul>');
       else summary.push(`<ul class="summary">${li}</ul>`);
     }
-    else if (b.type !== 'hr') summary.push(`<p class="summary"${at(i)}>${inline(b.text)}</p>`);
+    else if (b.type === 'hr') summary.push(`<hr${at(i)}>`);
+    else summary.push(`<p class="summary"${at(i)}>${inline(b.text)}</p>`);
   }
   const sections = renderSections(blocks, i);
 

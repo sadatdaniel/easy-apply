@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { parseBlocks } from '@shared/blocks';
 import { EXAMPLES } from '@shared/examples';
-import { keywordMatch, renderDoc, THEMES } from '@shared/render';
-import type { AppState, DocKind, DocMeta, Job, TemplateInfo, VersionInfo } from '@shared/types';
+import { renderDoc, THEMES } from '@shared/render';
+import type { AppState, DocKind, DocMeta, Job, TemplateInfo } from '@shared/types';
 import { api, type Doc } from './api';
-import { DocEditor, type Tailor } from './DocEditor';
+import { DocWorkspace, type DocStore } from './DocWorkspace';
 import { readCvFile } from './ImportCv';
-import { ContextMenu, fmtDateTime, useAction, useToast, useUnsavedWarning, type MenuItem } from './ui';
+import { ContextMenu, useAction, useToast, type MenuItem } from './ui';
 
 /*
   Step 2: the application's documents. A strip across the top holds every file in the job's folder (CV,
@@ -166,111 +166,20 @@ function FileThumb({ job, name, library = false, big = false }: { job?: string; 
 }
 
 /* ---------------- one document: the editor ---------------- */
-function DocPane({ job, doc: initial, onSaved, replace }: { job: Job; doc: Doc; onSaved: (d: Doc) => void; replace: () => void }) {
-  const name = initial.name;
-  const [doc, setDoc] = useState<Doc>(initial);
-  const [saving, setSaving] = useState<'saved' | 'saving' | 'dirty'>('saved');
-  const [versions, setVersions] = useState<VersionInfo[]>([]);
-  const [preview, setPreview] = useState<{ v: VersionInfo; body: string } | null>(null);
-  const [tailorMode, setTailorMode] = useState(false);
-  const timer = useRef<number>();
-  const pending = useRef<string | null>(null);
-  const run = useAction();
-
-  const loadVersions = () => api.versions(job.id, name).then(setVersions).catch(() => {});
-  useEffect(() => { loadVersions(); }, []);
-
-  const flush = async (version = false) => {
-    if (pending.current === null) return;
-    const body = pending.current; pending.current = null;
-    setSaving('saving');
-    const r = await run(() => api.saveDoc(job.id, name, body, undefined, version));
-    if (!r) {
-      // keep the text queued (unless something newer replaced it) and try again shortly
-      pending.current ??= body;
-      setSaving('dirty');
-      clearTimeout(timer.current);
-      timer.current = window.setTimeout(() => flush(version), 5000);
-      return;
-    }
-    onSaved(r);
-    setSaving(pending.current === null ? 'saved' : 'dirty');
-    loadVersions();
+function DocPane({ job, doc, onSaved, replace }: { job: Job; doc: Doc; onSaved: (d: Doc) => void; replace: () => void }) {
+  const name = doc.name;
+  const store: DocStore = {
+    save: (body, meta, version) => api.saveDoc(job.id, name, body, meta, version),
+    versions: () => api.versions(job.id, name),
+    version: id => api.version(job.id, name, id).then(r => r.body),
+    restore: id => api.restore(job.id, name, id),
+    tailor: (body, block, instruction, avoid) => api.rewrite(job.id, name, body, block, instruction, avoid),
+    keywords: job.keywords,
+    print: () => window.open(`/print?job=${encodeURIComponent(job.id)}&docs=${encodeURIComponent(name)}`, '_blank'),
   };
-  useUnsavedWarning(saving !== 'saved');
-  useEffect(() => () => { clearTimeout(timer.current); flush(); }, []);
-
-  function change(body: string, opts?: { version?: boolean }) {
-    setDoc(d => ({ ...d, body }));
-    pending.current = body; setSaving('dirty');
-    clearTimeout(timer.current);
-    // an accepted AI change saves right away, keeping the text before it as a version
-    if (opts?.version) flush(true);
-    else timer.current = window.setTimeout(() => flush(), 700);
-  }
-
-  const tailor: Tailor = (body, block, instruction, avoid) => api.rewrite(job.id, name, body, block, instruction, avoid);
-
-  /** theme and formatting-bar settings; shown at once, then saved */
-  async function setMeta(patch: Partial<DocMeta>) {
-    setDoc(d => ({ ...d, meta: { ...d.meta, ...patch } }));
-    await flush();
-    const r = await run(() => api.saveDoc(job.id, name, pending.current ?? doc.body, patch));
-    if (r) { setDoc(d => ({ ...d, meta: r.meta })); onSaved(r); }
-  }
-
-  const match = keywordMatch(doc.body, job.keywords);
-  const unfilled = [...new Set([...doc.body.matchAll(/\{\{\s*([\w.-]+)\s*\}\}/g)].map(m => m[1]))];
-
-  return (
-    <>
-      <div className="edbar">
-        <b className="ed-title">{doc.meta.title}</b><span className="muted mono" style={{ fontSize: 12 }}>{name}</span>
-        <span className="sp" />
-        <span className="muted" style={{ fontSize: 12 }}>{saving === 'saving' ? 'Saving…' : saving === 'dirty' ? 'Unsaved' : 'Saved'}</span>
-        <select className="input" style={{ width: 'auto', padding: '5px 8px' }} value={doc.meta.theme} onChange={e => setMeta({ theme: e.target.value })}>
-          {Object.entries(THEMES).map(([k, t]) => <option key={k} value={k}>Design: {t.name}</option>)}
-        </select>
-        <button className="btn sm" onClick={replace}>Replace…</button>
-        <button className="btn sm" onClick={async () => { await flush(); window.open(`/print?job=${encodeURIComponent(job.id)}&docs=${encodeURIComponent(name)}`, '_blank'); }}>Print / PDF</button>
-        <button className={'btn sm' + (tailorMode ? ' pri' : '')} disabled={!!preview} title="Click a line to get a version tailored to this job, then accept or reject it" onClick={() => setTailorMode(t => !t)}>{tailorMode ? '✨ Tailoring: on' : '✨ Tailor'}</button>
-      </div>
-      <div className="edwrap">
-        <div style={{ minWidth: 0 }}>
-          {preview ? (
-            <>
-              <div className="note" style={{ maxWidth: 794, margin: '0 auto 14px', display: 'flex', gap: 10, alignItems: 'center' }}>
-                <span>Viewing the version from <b>{fmtDateTime(preview.v.at)}</b>.</span><span className="sp" />
-                <button className="btn sm" onClick={() => setPreview(null)}>Back to current</button>
-                <button className="btn sm pri" onClick={async () => { await flush(); const r = await run(() => api.restore(job.id, name, preview.v.id), 'Version restored (the current text was saved as a version first)'); if (r) { setDoc(r); onSaved(r); setPreview(null); loadVersions(); } }}>Restore this version</button>
-              </div>
-              <DocEditor body={preview.body} meta={doc.meta} readOnly />
-            </>
-          ) : <DocEditor body={doc.body} meta={doc.meta} onChange={change} onMeta={setMeta} tailor={tailor} tailorMode={tailorMode} />}
-        </div>
-        <div className="margin">
-          {match.score !== null && (
-            <div className="card"><h4>Keyword match</h4>
-              <div className="meter"><i style={{ width: match.score + '%' }} /></div><b style={{ fontSize: 20 }}>{match.score}%</b>
-              {match.missing.length > 0 && <p className="muted" style={{ fontSize: 12, margin: '6px 0 0' }}>Not mentioned yet:<br />{match.missing.map(k => <span key={k} className="kw miss">{k}</span>)}</p>}
-            </div>
-          )}
-          {!job.keywords.length && <div className="card muted" style={{ fontSize: 12.5 }}>Add key requirements in step 1 to see a keyword match here.</div>}
-          {unfilled.length > 0 && <div className="note" style={{ fontSize: 12.5 }}>Not filled in: {unfilled.map(u => <code key={u}>{`{{${u}}}`} </code>)}<br />Type over them on the page, or set them in Profile for future copies.</div>}
-          <div className="card"><h4>Versions</h4>
-            <div className="vlist">
-              {versions.slice(0, 12).map(v => (
-                <button key={v.id} className={preview?.v.id === v.id ? 'on' : ''} onClick={async () => { const r = await run(() => api.version(job.id, name, v.id)); if (r) setPreview({ v, body: r.body }); }}>
-                  <span>{fmtDateTime(v.at)}</span><span className="muted">view</span></button>
-              ))}
-              {!versions.length && <span className="muted" style={{ fontSize: 12 }}>Earlier versions appear here as you edit.</span>}
-            </div>
-            <button className="btn sm" style={{ marginTop: 8, width: '100%' }} onClick={async () => { await flush(); if (await run(() => api.saveDoc(job.id, name, doc.body, undefined, true), 'Version saved')) loadVersions(); }}>Save a version now</button>
-          </div>
-        </div>
-      </div>
-    </>
-  );
+  return <DocWorkspace doc={doc} store={store} onSaved={d => onSaved({ ...d, name })}
+    head={meta => <><b className="ed-title">{meta.title}</b><span className="muted mono" style={{ fontSize: 12 }}>{name}</span></>}
+    tools={<button className="btn sm" onClick={replace}>Replace…</button>} />;
 }
 
 /* ---------------- one file: a preview ---------------- */

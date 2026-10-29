@@ -57,13 +57,17 @@ export const lengthOf = (el: HTMLElement) => { const r = document.createRange();
   Inline marks cut in half are closed and reopened, so "**Bo|ld**" splits into "**Bo**" and "**ld**".
 */
 export function cut(el: HTMLElement, a: Point, b?: Point): string[] {
-  const ranges = [a, b].filter((p): p is Point => !!p).map(p => { const r = document.createRange(); r.setStart(p.node, p.offset); return r; });
-  const marks: Text[] = [];
+  // work on a copy: the page itself stays as it is, so the same points can be read again
+  const copy = el.cloneNode(true) as HTMLElement;
+  const into = (p: Point): Point => {
+    const path: number[] = [];
+    for (let n: Node = p.node; n !== el; n = n.parentNode!) { if (!n.parentNode) return { node: copy, offset: 0 }; path.unshift([...n.parentNode.childNodes].indexOf(n as ChildNode)); }
+    return { node: path.reduce<Node>((n, i) => n.childNodes[i], copy), offset: p.offset };
+  };
+  const ranges = [a, b].filter((p): p is Point => !!p).map(p => { const q = into(p); const r = document.createRange(); r.setStart(q.node, q.offset); return r; });
   // insert the later marker first; live ranges follow the change
-  for (const r of [...ranges].reverse()) { const t = document.createTextNode(MARK); r.insertNode(t); marks.push(t); }
-  const md = elToMd(el);
-  for (const t of marks) t.remove();
-  el.normalize();
+  for (const r of [...ranges].reverse()) r.insertNode(document.createTextNode(MARK));
+  const md = elToMd(copy);
   const parts = md.split(MARK);
   return parts.length === ranges.length + 1 ? balance(parts) : [md, ...ranges.map(() => '')];
 }
@@ -177,6 +181,7 @@ export function htmlToBlocks(html: string): Block[] {
   doc.querySelectorAll('script, style, meta, title, head').forEach(e => e.remove());
   const out: Block[] = [];
   const BLOCK = /^(P|DIV|H[1-6]|LI|UL|OL|HR|TABLE|TR|TD|TH|BLOCKQUOTE|SECTION|ARTICLE|HEADER|FOOTER|PRE)$/;
+  const BLOCK_SEL = 'p, div, h1, h2, h3, h4, h5, h6, li, ul, ol, hr, table, blockquote, section, article, pre';
   const inl = (n: Node): string => {
     if (n.nodeType === 3) return (n.nodeValue ?? '').replace(/\s+/g, ' ');
     if (!(n instanceof Element)) return '';
@@ -214,7 +219,8 @@ export function htmlToBlocks(html: string): Block[] {
         else if (tag === 'TR') push('p', [...n.children].map(c => inl(c).trim()).filter(Boolean).join(' | '));
         else if ([...n.children].some(c => BLOCK.test(c.tagName))) walk(n);
         else push(/^\s*[•●▪◦]\s/.test(n.textContent ?? '') ? 'li' : 'p', inl(n));
-      } else run += inl(n);
+      } else if (n instanceof Element && n.querySelector(BLOCK_SEL)) { flush(); walk(n); } // Google Docs wraps everything in one <b>
+      else run += inl(n);
     }
     flush();
   };

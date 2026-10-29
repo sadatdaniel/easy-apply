@@ -146,7 +146,11 @@ export function createStore(fs: Fs) {
     return { id, meta: toMeta(meta, id), body };
   }
   async function saveTemplate(id: string, meta: DocMeta, body: string) {
-    await fs.write(templatePath(id), joinFrontmatter({ ...toMeta(meta as never, id) }, body));
+    // "main" is only changed by setMain: an editor holding an older copy must not undo it
+    // a deleted one stays deleted (an autosave may still be on its way)
+    if (!(await fs.exists(templatePath(id)))) throw notFound('Template');
+    const main = (await getTemplate(id)).meta.main;
+    await fs.write(templatePath(id), joinFrontmatter({ ...toMeta(meta as never, id), main: main || undefined }, body));
     return getTemplate(id);
   }
   /** Makes a CV (or cover letter) the main one for its language: one main CV and one main letter per language. */

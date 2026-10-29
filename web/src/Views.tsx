@@ -5,7 +5,7 @@ import { CLOSED, STATUSES, type AppState, type DocMeta, type TemplateInfo, type 
 import { api, helperRunning, lastBackup } from './api';
 import { download } from './exporter';
 import { ACCENTS, applyAppearance, loadAppearance, LOOKS, type AccentId, type Appearance, type LookId } from './appearance';
-import { DocEditor } from './DocEditor';
+import { DocWorkspace } from './DocWorkspace';
 import { Providers } from './Providers';
 import { CV_ACCEPT, ImportReview, readCvFile, type CvUpload } from './ImportCv';
 import { ContextMenu, Dot, fmtDate, fmtDateTime, STATUS, StatusMenu, useAction, useToast, useUnsavedWarning, type MenuItem } from './ui';
@@ -64,11 +64,9 @@ export function MyCv({ state, refresh }: { state: AppState; refresh: () => Promi
   const mains = mainIds(state.templates);
   const [id, setId] = useState<string | null>(() => [...mains][0] ?? state.templates[0]?.id ?? null);
   const [t, setT] = useState<{ meta: DocMeta; body: string } | null>(null);
-  const [saved, setSaved] = useState(true);
   const [upload, setUpload] = useState<CvUpload | null>(null);
   const [menu, setMenu] = useState<{ x: number; y: number; items: MenuItem[]; ask?: MenuItem } | null>(null);
   const file = useRef<HTMLInputElement>(null);
-  const timer = useRef<number>();
   const run = useAction();
   useEffect(() => { if (id) api.template(id).then(setT); else setT(null); }, [id]);
 
@@ -77,16 +75,6 @@ export function MyCv({ state, refresh }: { state: AppState; refresh: () => Promi
     const u = await run(() => readCvFile(f));
     if (u) setUpload(u);
   }
-  const save = (meta: DocMeta, body: string) => {
-    setT({ meta, body }); setSaved(false);
-    clearTimeout(timer.current);
-    const attempt = async () => {
-      if (!id) return;
-      if (await run(() => api.saveTemplate(id, meta, body))) { setSaved(true); refresh(); }
-      else timer.current = window.setTimeout(attempt, 5000); // keep trying; the text stays on screen and in this queue
-    };
-    timer.current = window.setTimeout(attempt, 700);
-  };
   async function create(kind: DocMeta['kind'], from?: string) {
     const title = from ? `${t?.meta.title} (copy)` : kind === 'cover' ? 'New cover letter' : 'New CV';
     const r = await run(() => api.createTemplate({ title, kind, lang: t?.meta.lang ?? 'en', theme: t?.meta.theme ?? 'classic' }, from));
@@ -94,18 +82,15 @@ export function MyCv({ state, refresh }: { state: AppState; refresh: () => Promi
   }
   const mainWord = (kind: string) => (kind === 'cover' ? 'main cover letter' : 'main CV');
   async function makeMain(x: { id: string; title: string; lang: string; kind: string }) {
-    if (x.id === id) clearTimeout(timer.current);
     if (await run(() => api.setMain(x.id), `"${x.title}" is now your ${mainWord(x.kind)} (${LANG(x.lang)})`)) {
       await refresh();
       if (id) api.template(id).then(setT); // the open document's "main" flag may have changed
     }
   }
-  useUnsavedWarning(!saved);
   const deleteItem = (x: { id: string; title: string }): MenuItem => ({
     label: 'Delete…', danger: true,
     confirm: `Delete "${x.title}"? It moves to the .trash folder inside your files. Applications that already use it keep their own copies.`,
     onClick: async () => {
-      if (x.id === id) clearTimeout(timer.current); // a pending autosave would write the file back
       if (await run(() => api.trashTemplate(x.id), `Deleted "${x.title}"`)) {
         await refresh();
         if (x.id === id) setId(null);
@@ -123,13 +108,12 @@ export function MyCv({ state, refresh }: { state: AppState; refresh: () => Promi
     ['Cover letters', state.templates.filter(x => x.kind === 'cover')],
     ['Other', state.templates.filter(x => x.kind === 'other')],
   ];
-  const canBeMain = t?.meta.kind === 'cv' || t?.meta.kind === 'cover';
 
   return (
     <div className="split">
       <div className="side-list">
         <div className="mycv-intro">
-          Your CVs and cover letters. Every application starts from a copy of your <b>main</b> ones (★), so these originals stay untouched. AI suggestions only use facts from your CV.
+          Your CVs and cover letters. An application gets its own copy of the ones you pick, so these originals stay untouched. AI suggestions use facts from your main CV (★).
         </div>
         <button className="btn pri sm" onClick={() => file.current?.click()}>⬆ Upload CV or cover letter…</button>
         <input ref={file} type="file" accept={CV_ACCEPT} hidden onChange={e => { pick(e.target.files?.[0]); e.target.value = ''; }} />
@@ -156,23 +140,24 @@ export function MyCv({ state, refresh }: { state: AppState; refresh: () => Promi
       <div className="content" style={{ background: 'var(--bg)' }}>
         {upload ? <ImportReview upload={upload} profile={state.profile} templates={state.templates}
           onCancel={() => setUpload(null)} onDone={async newId => { setUpload(null); await refresh(); setId(newId); }} />
-        : t && id ? <>
-          <div className="edbar">
-            <input className="input" style={{ width: 220 }} value={t.meta.title} onChange={e => save({ ...t.meta, title: e.target.value }, t.body)} aria-label="Title" />
-            <select className="input" style={{ width: 'auto' }} value={t.meta.kind} onChange={e => save({ ...t.meta, kind: e.target.value as DocMeta['kind'] }, t.body)}>
-              <option value="cv">CV</option><option value="cover">Cover letter</option><option value="other">Other</option></select>
-            <select className="input" style={{ width: 'auto' }} value={t.meta.lang} onChange={e => save({ ...t.meta, lang: e.target.value }, t.body)}>
-              <option value="en">English</option><option value="de">Deutsch</option><option value="other">Other</option></select>
-            <select className="input" style={{ width: 'auto' }} value={t.meta.theme} onChange={e => save({ ...t.meta, theme: e.target.value }, t.body)}>
-              {Object.entries(THEMES).map(([k, v]) => <option key={k} value={k}>Design: {v.name}</option>)}</select>
-            {canBeMain && (mains.has(id)
-              ? <span className="main-badge" title="New applications in this language start from it">★ {mainWord(t.meta.kind).replace(/^m/, 'M')} ({LANG(t.meta.lang)})</span>
-              : <button className="btn sm" onClick={() => makeMain({ id, title: t.meta.title, lang: t.meta.lang, kind: t.meta.kind })}>☆ Make {mainWord(t.meta.kind)}</button>)}
-            <span className="sp" /><span className="muted" style={{ fontSize: 12 }}>{saved ? 'Saved' : 'Saving…'}</span>
-            <button className="btn sm" onClick={e => { const r = e.currentTarget.getBoundingClientRect(); const d = deleteItem({ id, title: t.meta.title }); setMenu({ x: r.left, y: r.bottom + 6, items: [d], ask: d }); }}>Delete…</button>
-          </div>
-          <div style={{ padding: '18px 24px 60px' }}><DocEditor body={t.body} meta={t.meta} onChange={b => save(t.meta, b)} onMeta={patch => save({ ...t.meta, ...patch }, t.body)} /></div>
-        </> : <div className="mycv-empty">
+        : t && id ? <DocWorkspace key={id} doc={t} onSaved={d => { setT(d); refresh(); }}
+            store={{ save: async (body, meta) => {
+              try { const r = await api.saveTemplate(id, meta, body); return { meta: r.meta, body: r.body }; }
+              catch (e) { if ((e as { statusCode?: number }).statusCode === 404) return { meta, body }; throw e; } // deleted meanwhile
+            } }}
+            head={(meta, setMeta) => <>
+              <input className="input" style={{ width: 220 }} value={meta.title} onChange={e => setMeta({ title: e.target.value }, false)} aria-label="Title" />
+              <select className="input" style={{ width: 'auto' }} value={meta.kind} onChange={e => setMeta({ kind: e.target.value as DocMeta['kind'] })}>
+                <option value="cv">CV</option><option value="cover">Cover letter</option><option value="other">Other</option></select>
+              <select className="input" style={{ width: 'auto' }} value={meta.lang} onChange={e => setMeta({ lang: e.target.value })}>
+                <option value="en">English</option><option value="de">Deutsch</option><option value="other">Other</option></select>
+              {(meta.kind === 'cv' || meta.kind === 'cover') && (mains.has(id)
+                ? <span className="main-badge" title="Marked as your main one for this language">★ {mainWord(meta.kind).replace(/^m/, 'M')} ({LANG(meta.lang)})</span>
+                : <button className="btn sm" onClick={() => makeMain({ id, title: meta.title, lang: meta.lang, kind: meta.kind })}>☆ Make {mainWord(meta.kind)}</button>)}
+            </>}
+            tools={<button className="btn sm" onClick={e => { const r = e.currentTarget.getBoundingClientRect(); const d = deleteItem({ id, title: t.meta.title }); setMenu({ x: r.left, y: r.bottom + 6, items: [d], ask: d }); }}>Delete…</button>}
+            margin={<div className="note" style={{ fontSize: 12.5 }}>This is your original. Applications get their own copy of it, so changes here only show up in applications you start from now on.</div>} />
+ : <div className="mycv-empty">
           <h2>{state.templates.some(x => x.kind === 'cv') ? 'Pick a CV or letter on the left' : 'Upload your CV and cover letter'}</h2>
           <p className="muted">Easy Apply tailors both to every job. Word and PDF files are read in this browser; nothing is uploaded anywhere.</p>
           <button className="btn pri" onClick={() => file.current?.click()}>⬆ Upload CV or cover letter…</button>

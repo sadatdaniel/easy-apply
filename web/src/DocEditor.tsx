@@ -157,7 +157,11 @@ export function DocEditor({ body, meta, onChange, onMeta, readOnly = false, tail
     } else {
       const list = [...ins];
       nb = [];
-      if (before.trim()) nb.push(list[0]?.type !== 'hr' ? { type: t, text: before + list.shift()!.text } : { type: t, text: before });
+      // pasted lines at the end of a line go below it, at its start above it; in the middle they split it
+      const atEnd = before.trim() && !after.trim(), atStart = !before.trim() && after.trim();
+      if (atEnd) nb.push({ type: t, text: before });
+      else if (before.trim()) nb.push(list[0]?.type !== 'hr' ? { type: t, text: before + list.shift()!.text } : { type: t, text: before });
+      if (atStart) { nb.push(...list, { type: t, text: after }); commit([...blocks.slice(0, s.i), ...nb, ...blocks.slice(s.j + 1)], { b: s.i + nb.length - 1, off: 0 }, kind); return; }
       nb.push(...list);
       const last = nb[nb.length - 1];
       if (after) { if (!last || last.type === 'hr') nb.push({ type: 'p', text: after }); else nb[nb.length - 1] = { ...last, text: last.text + after }; }

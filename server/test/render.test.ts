@@ -101,3 +101,15 @@ describe('helpers', () => {
     expect(wordDiff('same', 'same')).toEqual([{ op: 'same', text: 'same' }]);
   });
 });
+
+describe('bullets and dividers above the first section', () => {
+  it('are drawn (and can be clicked) in every theme', () => {
+    const blocks = parseBlocks('# Alex\n\nTagline\n\nA summary.\n\n- one\n- two\n\n---\n\n## Skills\n\n- SQL\n');
+    for (const theme of ['classic', 'sidebar', 'serif', 'academic']) {
+      const d = dom(renderDoc(blocks, theme, 'cv'));
+      expect(d.querySelectorAll('ul.summary li').length).toBe(2);
+      expect(d.querySelector('hr')?.getAttribute('data-b')).toBe('5');
+      for (const i of [3, 4, 5]) expect(d.querySelectorAll(`[data-b="${i}"]`).length).toBe(1);
+    }
+  });
+});

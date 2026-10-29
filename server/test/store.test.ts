@@ -168,3 +168,42 @@ describe('main CV', () => {
   });
 });
 
+
+describe('documents in an application', () => {
+  it('copies an example in, filled for the job, and remembers where each copy came from', async () => {
+    const job = await store.createJob({ title: 'Data Engineer', company: 'Lumen Labs', location: 'Berlin' });
+    const letter = await store.addDocFromExample(job.id, 'example-letter');
+    const cv = await store.addDocFromTemplate(job.id, 'cv-en');
+    const doc = await store.getDoc(job.id, letter);
+    expect(doc.meta.kind).toBe('cover');
+    expect(doc.body).toContain('Dear Lumen Labs team');
+    expect(doc.body).not.toContain('{{');
+    expect((await store.getJob(job.id)).sources).toEqual({ [letter]: 'example:example-letter', [cv]: 'cv-en' });
+    await expect(store.addDocFromExample(job.id, 'nope')).rejects.toThrow(/not found/);
+  });
+
+  it('removing a document keeps the file in .removed and leaves the original untouched', async () => {
+    const job = await store.createJob({ title: 'Dev', company: 'X' });
+    const name = await store.addDocFromTemplate(job.id, 'cv-en');
+    await store.saveDoc(job.id, name, '# Changed for X\n');
+    const before = await store.getTemplate('cv-en');
+    const after = await store.removeDoc(job.id, name);
+    expect(after.docs).toEqual([]);
+    expect(after.bucket).toEqual([]);
+    expect(after.sources?.[name]).toBeUndefined();
+    const kept = (await fs.list(`jobs/${job.id}/.removed`)).map(e => e.name);
+    expect(kept).toEqual([name]);
+    expect(await fs.read(`jobs/${job.id}/.removed/${name}`)).toContain('# Changed for X');
+    expect((await store.getTemplate('cv-en')).body).toBe(before.body);
+  });
+
+  it('saving an original never changes its main flag, and never brings a deleted one back', async () => {
+    await store.setMain('cv-en');
+    const t = await store.getTemplate('cv-en');
+    await store.saveTemplate('cv-en', { ...t.meta, main: undefined }, t.body + '\nmore\n'); // an editor with an older copy
+    expect((await store.getTemplate('cv-en')).meta.main).toBe(true);
+    await store.trashTemplate('cv-en');
+    await expect(store.saveTemplate('cv-en', t.meta, t.body)).rejects.toThrow(/not found/);
+    expect((await store.listTemplates()).map(x => x.id)).not.toContain('cv-en');
+  });
+});
