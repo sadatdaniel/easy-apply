@@ -1,4 +1,5 @@
 import { fillPlaceholders } from './blocks';
+import { EXAMPLES } from './examples';
 import { STARTERS } from './starters';
 import { basename, cleanFileName, copy, copyTree, extname, httpError, join, joinFrontmatter, notFound, readJson, safeName, slugify, splitFrontmatter, uniquePath, writeJson, type Fs } from './fs';
 import { CLOSED, STATUSES, type DocMeta, type DocStyle, type ExtraFile, type Job, type JobFields, type Profile, type Status, type TemplateInfo, type VersionInfo } from './types';
@@ -274,22 +275,40 @@ export function createStore(fs: Fs) {
     if (!n.endsWith('.md')) throw httpError(400, 'Documents are .md files');
     return join(await jobDir(id), n);
   }
-  async function addDocFromTemplate(id: string, templateId: string) {
-    const t = await getTemplate(templateId);
+  /** copies a document into the job's folder, with the profile's and the job's details filled in */
+  async function addDoc(id: string, src: { meta: DocMeta; body: string }, base: string, source: string) {
     const job = await getJob(id);
-    const p = await uniquePath(fs, await jobDir(id), slugify(templateId, 30), '.md');
+    const p = await uniquePath(fs, await jobDir(id), slugify(base, 30), '.md');
     const jobValues = {
       company: job.company, job_title: job.title, job_location: job.location,
-      today: new Date().toLocaleDateString(t.meta.lang.startsWith('de') ? 'de-DE' : 'en-GB', { day: 'numeric', month: 'long', year: 'numeric' }),
+      today: new Date().toLocaleDateString(src.meta.lang.startsWith('de') ? 'de-DE' : 'en-GB', { day: 'numeric', month: 'long', year: 'numeric' }),
     };
-    const body = fillPlaceholders(t.body, { ...(await profileValues()), ...jobValues });
-    const { main: _main, ...meta } = t.meta; // a job's copy is never the main CV
-    await fs.write(p, joinFrontmatter({ ...meta, template: templateId }, body));
+    const body = fillPlaceholders(src.body, { ...(await profileValues()), ...jobValues });
+    const { main: _main, ...meta } = src.meta; // a job's copy is never the main CV
+    await fs.write(p, joinFrontmatter({ ...meta, template: source }, body));
     const name = basename(p);
     job.docs.push(name);
     job.bucket.push(name);
+    job.sources = { ...job.sources, [name]: source };
     await saveJob(job);
     return name;
+  }
+  const addDocFromTemplate = async (id: string, templateId: string) => addDoc(id, await getTemplate(templateId), templateId, templateId);
+  async function addDocFromExample(id: string, exampleId: string) {
+    const ex = EXAMPLES.find(e => e.id === exampleId);
+    if (!ex) throw notFound('Example');
+    return addDoc(id, ex, ex.meta.kind === 'cover' ? 'cover-letter' : ex.meta.kind === 'cv' ? 'cv' : ex.id, 'example:' + ex.id);
+  }
+  /** Taking a document out of an application moves its file into .removed/ (its versions stay), never deletes it. */
+  async function removeDoc(id: string, name: string) {
+    const job = await getJob(id);
+    const n = safeName(name);
+    const p = await docPath(id, n);
+    if (await fs.exists(p)) await fs.move(p, await uniquePath(fs, join(await jobDir(id), '.removed'), basename(n, '.md'), '.md'));
+    job.docs = job.docs.filter(d => d !== n);
+    job.bucket = job.bucket.filter(d => d !== n);
+    if (job.sources) delete job.sources[n];
+    return saveJob(job);
   }
   async function getDoc(id: string, name: string) {
     const p = await docPath(id, name);
@@ -371,7 +390,7 @@ export function createStore(fs: Fs) {
     listTemplates, getTemplate, saveTemplate, createTemplate, trashTemplate, setMain, mainCv,
     listExtras, extraFile, addExtra,
     getJob, listJobs, createJob, updateJob, setStatus, trashJob, getPosting, savePosting,
-    addDocFromTemplate, getDoc, saveDoc, listVersions, getVersion, restoreVersion,
+    addDocFromTemplate, addDocFromExample, removeDoc, getDoc, saveDoc, listVersions, getVersion, restoreVersion,
     attachExtra, detachExtra, setBucket, jobFile,
   };
 }

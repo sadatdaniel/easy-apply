@@ -115,6 +115,7 @@ export const api = {
 
   uploadExtra: async (file: File) => ({ name: await s().addExtra(file.name, file) }),
   openExtra: async (name: string) => openBlob(await s().extraFile(name)),
+  extraBlob: (name: string) => s().extraFile(name),
 
   async fetchPosting(url: string): Promise<FetchedPosting> {
     url = url.trim();
@@ -161,6 +162,21 @@ export const api = {
   async addDoc(id: string, template: string) {
     const name = await s().addDocFromTemplate(id, template);
     return { name, job: await s().getJob(id) };
+  },
+  async addExample(id: string, example: string) {
+    const name = await s().addDocFromExample(id, example);
+    return { name, job: await s().getJob(id) };
+  },
+  removeDoc: (id: string, name: string) => s().removeDoc(id, name),
+  /** swaps a document or file for another one, in the same place of the send order */
+  async replaceIn(id: string, old: string, add: () => Promise<string>) {
+    const before = await s().getJob(id);
+    const at = before.bucket.indexOf(old);
+    const name = await add();
+    if (old.endsWith('.md')) await s().removeDoc(id, old); else await s().detachExtra(id, old);
+    const job = await s().getJob(id);
+    if (at >= 0) await s().setBucket(id, [...job.bucket.filter(n => n !== name).slice(0, at), name, ...job.bucket.filter(n => n !== name).slice(at)]);
+    return name;
   },
   doc: (id: string, name: string) => s().getDoc(id, name),
   saveDoc: (id: string, name: string, body: string, meta?: Partial<DocMeta>, version = false) => s().saveDoc(id, name, body, meta, version),

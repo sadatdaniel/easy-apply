@@ -106,6 +106,12 @@ function renderCV(blocks: Block[], theme: string, layout: string, lang: string):
     else if (b.type === 'p' && b.text.includes(' | ') && !contact)
       contact = `<div class="contact"${at(i)}>${b.text.split(' | ').map(c => `<span>${inline(c.trim())}</span>`).join('')}</div>`;
     else if (b.type === 'p' && !contact && !tagline) tagline = `<div class="tag"${at(i)}>${inline(b.text)}</div>`;
+    else if (b.type === 'li') {
+      // bullets above the first section: one list, like anywhere else
+      const li = `<li${at(i)}>${inline(b.text)}</li>`;
+      if (summary.length && summary[summary.length - 1].startsWith('<ul')) summary[summary.length - 1] = summary[summary.length - 1].replace(/<\/ul>$/, li + '</ul>');
+      else summary.push(`<ul class="summary">${li}</ul>`);
+    }
     else if (b.type !== 'hr') summary.push(`<p class="summary"${at(i)}>${inline(b.text)}</p>`);
   }
   const sections = renderSections(blocks, i);

@@ -13,10 +13,10 @@ import themesCss from './themes.css?raw';
   pdf-lib and fflate load only when exporting.
 */
 export interface BundleItem { name: string; title: string; kind: 'doc' | 'pdf' | 'image' | 'other'; pages: number; note?: string }
-export interface Bundle { pdf: Uint8Array; items: BundleItem[]; parts: { file: string; bytes: Uint8Array }[]; pages: number }
+export interface Bundle { pdf: Uint8Array; items: BundleItem[]; parts: { name: string; file: string; bytes: Uint8Array }[]; pages: number }
 
 const kindOf = (n: string): BundleItem['kind'] => n.endsWith('.md') ? 'doc' : /\.pdf$/i.test(n) ? 'pdf' : /\.(png|jpe?g)$/i.test(n) ? 'image' : 'other';
-const safe = (s: string) => s.normalize('NFKD').replace(/[̀-ͯ]/g, '').replace(/[^\p{L}\p{N}]+/gu, '_').replace(/^_|_$/g, '') || 'file';
+export const safe = (s: string) => s.normalize('NFKD').replace(/[̀-ͯ]/g, '').replace(/[^\p{L}\p{N}]+/gu, '_').replace(/^_|_$/g, '') || 'file';
 
 /* ---------- fonts: inline the ones a theme uses, as data URLs ---------- */
 const fontCache = new Map<string, Promise<string>>();
@@ -105,11 +105,11 @@ export async function buildBundle(jobId: string, order: string[], docs: Doc[], m
       const src = await PDFDocument.load(bytes);
       (await merged.copyPages(src, src.getPageIndices())).forEach(p => merged.addPage(p));
       items.push({ name, title, kind, pages: src.getPageCount() });
-      parts.push({ file: `${n}_${safe(title)}.pdf`, bytes });
+      parts.push({ name, file: `${n}_${safe(title)}.pdf`, bytes });
       continue;
     }
     const bytes = new Uint8Array(await (await api.fileBlob(jobId, name)).arrayBuffer());
-    parts.push({ file: `${n}_${name}`, bytes });
+    parts.push({ name, file: `${n}_${name}`, bytes });
     if (kind === 'pdf') {
       try {
         const src = await PDFDocument.load(bytes, { ignoreEncryption: true });

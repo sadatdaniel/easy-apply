@@ -1,12 +1,12 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { blockToMarkdown, parseBlocks, replaceBlock, serializeBlocks, setTypes, toggleMark, type LineType } from '@shared/blocks';
+import { blockToMarkdown, parseBlocks, replaceBlock, serializeBlocks, setTypes, toggleMark, type Block, type LineType } from '@shared/blocks';
 import { renderDoc } from '@shared/render';
 import { wordDiff } from '@shared/diff';
 import type { DocMeta, DocStyle } from '@shared/types';
+import { blockEl, blocksToHtml, blocksToText, cut, htmlToBlocks, indexOf, lengthOf, MD_TYPE, offsetIn, placeCaret, prepare, resolve, textToBlocks, type Caret } from './pageEdit';
 
 const PAGE_H = 1123; // A4 at 96 dpi
 
-interface Editing { i: number; text: string; top: number; left: number; width: number; height: number; font: Partial<CSSStyleDeclaration> }
 interface Review {
   i: number; top: number; left: number; width: number;
   original: string; state: 'loading' | 'ready' | 'error';
@@ -14,45 +14,339 @@ interface Review {
 }
 export type Tailor = (body: string, block: number, instruction: string, avoid: string[]) => Promise<{ text: string; why: string; unverified: string[] }>;
 
-/** The themed page itself is the editor: click a block, edit its markdown in place, Enter to keep. */
+interface Snap { blocks: Block[]; caret: Caret | null }
+type Span = { a: ReturnType<typeof resolve> & {}; b: ReturnType<typeof resolve> & {}; i: number; j: number };
+
+/**
+  The themed page itself is the editor, like a word processor: click anywhere and type, select across lines,
+  Ctrl+Z / Ctrl+Shift+Z, copy and paste between documents. The browser never edits the page directly; each
+  change is applied to the document's blocks and the page is drawn again (see pageEdit.ts).
+*/
 export function DocEditor({ body, meta, onChange, onMeta, readOnly = false, tailor, tailorMode = false }: {
   body: string; meta: DocMeta; onChange?: (body: string, opts?: { version?: boolean }) => void; readOnly?: boolean;
   /** saves document settings (the formatting bar's text size, spacing …) */
   onMeta?: (patch: Partial<DocMeta>) => void;
   /** asks the AI for a rewrite of one block; enables the ✨ tools */
   tailor?: Tailor;
-  /** clicking a line asks for a rewrite instead of opening it for editing */
+  /** clicking a line asks for a rewrite instead of placing the caret */
   tailorMode?: boolean;
 }) {
-  const blocks = useMemo(() => parseBlocks(body), [body]);
+  // the editor keeps its own blocks: an empty line you just made has no Markdown of its own yet
+  const [blocks, setBlocks] = useState<Block[]>(() => parseBlocks(body));
+  const emitted = useRef(body);
   const html = useMemo(() => renderDoc(blocks, meta.theme, meta.kind, meta.lang, meta.style), [blocks, meta.theme, meta.kind, meta.lang, meta.style]);
   const paper = useRef<HTMLDivElement>(null);
-  const ta = useRef<HTMLTextAreaElement>(null);
-  const [edit, setEdit] = useState<Editing | null>(null);
+  const host = useRef<HTMLDivElement>(null);
+  const caret = useRef<Caret | null>(null);
+  const hist = useRef<{ past: Snap[]; future: Snap[]; last: { kind: string; b: number; at: number } | null }>({ past: [], future: [], last: null });
+  const composing = useRef(false);
   const [pages, setPages] = useState(1);
   const [review, setReview] = useState<Review | null>(null);
-  // several lines selected for formatting together (drag across lines, or click one and Shift+click another)
-  const [sel, setSel] = useState<{ from: number; to: number } | null>(null);
-  const anchor = useRef<number | null>(null);
-  const swallowClick = useRef(false);
+  const [target, setTarget] = useState<{ from: number; to: number } | null>(null);
+  const [hr, setHr] = useState<{ i: number; top: number } | null>(null);
   const reqId = useRef(0);
+  const editable = !readOnly && !tailorMode;
 
-  // measure where A4 pages break
+  // a new text from outside (another version restored, the file reloaded): take it, and keep undo possible
+  useEffect(() => {
+    if (body === emitted.current) return;
+    emitted.current = body;
+    hist.current.past.push({ blocks, caret: null });
+    hist.current.future = [];
+    hist.current.last = null;
+    setBlocks(parseBlocks(body));
+  }, [body]);
+
+  // tailoring counts blocks the way the saved file has them, so drop empty lines first
+  useEffect(() => {
+    if (tailorMode && blocks.some(b => b.type !== 'hr' && !b.text.trim())) setBlocks(parseBlocks(serializeBlocks(blocks)));
+  }, [tailorMode]);
+
   useLayoutEffect(() => {
-    const sheet = paper.current?.querySelector('.sheet') as HTMLElement | null;
+    const root = host.current;
+    if (!root) return;
+    if (editable) prepare(root);
+    const sheet = root.querySelector('.sheet') as HTMLElement | null;
     if (sheet) setPages(Math.max(1, Math.ceil((sheet.scrollHeight - 2) / PAGE_H)));
+    root.querySelectorAll('.reviewing, .picked').forEach(e => e.classList.remove('reviewing', 'picked'));
+    if (review) root.querySelectorAll(`[data-b="${review.i}"]`).forEach(e => e.classList.add('reviewing'));
+    if (hr) blockEl(root, hr.i)?.classList.add('picked');
+    if (caret.current && editable) { root.focus({ preventScroll: true }); placeCaret(root, caret.current); caret.current = null; }
   });
 
-  // hide the block being edited so the textarea sits in its place; mark the one under review
-  useLayoutEffect(() => {
-    paper.current?.querySelectorAll('.editing, .reviewing, .picked').forEach(e => e.classList.remove('editing', 'reviewing', 'picked'));
-    if (edit) paper.current?.querySelectorAll(`[data-b="${edit.i}"]`).forEach(e => e.classList.add('editing'));
-    if (review) paper.current?.querySelectorAll(`[data-b="${review.i}"]`).forEach(e => e.classList.add('reviewing'));
-    if (sel) for (let i = sel.from; i <= sel.to; i++) paper.current?.querySelectorAll(`[data-b="${i}"]`).forEach(e => e.classList.add('picked'));
-  }, [edit, review?.i, sel, html]);
+  /* ---------- applying a change ---------- */
+  function emit(next: Block[], opts?: { version?: boolean }) {
+    const md = serializeBlocks(next.filter(b => b.type === 'hr' || b.text.trim()));
+    if (md === emitted.current && !opts?.version) return;
+    emitted.current = md;
+    onChange?.(md, opts);
+  }
+  function commit(next: Block[], c: Caret | null, kind = 'edit', opts?: { version?: boolean }) {
+    const h = hist.current, now = Date.now();
+    // typing in one line within a moment is one undo step
+    const same = kind === 'type' && h.last?.kind === 'type' && h.last.b === c?.b && now - h.last.at < 1500;
+    if (!same) { h.past.push({ blocks, caret: currentCaret() }); if (h.past.length > 200) h.past.shift(); }
+    h.future = [];
+    h.last = { kind, b: c?.b ?? -1, at: now };
+    setHr(null);
+    setBlocks(next);
+    caret.current = c;
+    emit(next, opts);
+  }
+  function undo() {
+    const h = hist.current, prev = h.past.pop();
+    if (!prev) return;
+    h.future.push({ blocks, caret: currentCaret() });
+    h.last = null;
+    setBlocks(prev.blocks); caret.current = prev.caret; emit(prev.blocks);
+  }
+  function redo() {
+    const h = hist.current, next = h.future.pop();
+    if (!next) return;
+    h.past.push({ blocks, caret: currentCaret() });
+    h.last = null;
+    setBlocks(next.blocks); caret.current = next.caret; emit(next.blocks);
+  }
 
-  useEffect(() => { if (edit && ta.current) { ta.current.focus(); autosize(ta.current); } }, [edit?.i]);
+  /* ---------- where the selection is ---------- */
+  function span(r?: { startContainer: Node; startOffset: number; endContainer: Node; endOffset: number } | null): Span | null {
+    const root = host.current;
+    const sel = getSelection();
+    const range = r ?? (sel && sel.rangeCount ? sel.getRangeAt(0) : null);
+    if (!root || !range || !root.contains(range.startContainer)) return null;
+    const a = resolve(root, { node: range.startContainer, offset: range.startOffset }, 'start');
+    const b = resolve(root, { node: range.endContainer, offset: range.endOffset }, 'end');
+    if (!a || !b) return null;
+    const i = indexOf(a.el), j = indexOf(b.el);
+    return i <= j ? { a, b, i, j } : null; // the sidebar layout can put a later block above an earlier one
+  }
+  function currentCaret(): { b: number; off: number; to: { b: number; off: number } } | null {
+    const s = span();
+    if (!s) return null;
+    const off = (x: Span['a']) => x.el.tagName === 'HR' ? 0 : offsetIn(x.el, x.point);
+    return { b: s.i, off: off(s.a), to: { b: s.j, off: off(s.b) } };
+  }
+  /** the block's Markdown before a, between a and b, after b */
+  function pieces(s: Span) {
+    const hrA = s.a.el.tagName === 'HR', hrB = s.b.el.tagName === 'HR';
+    const fromEnd = hrB ? 0 : lengthOf(s.b.el) - offsetIn(s.b.el, s.b.point);
+    if (s.i === s.j) {
+      if (hrA) return { before: '', mid: '', after: '', fromEnd };
+      const [before, mid, after] = cut(s.a.el, s.a.point, s.b.point);
+      return { before, mid, after, fromEnd };
+    }
+    return { before: hrA ? '' : cut(s.a.el, s.a.point)[0], mid: '', after: hrB ? '' : cut(s.b.el, s.b.point)[1], fromEnd };
+  }
+  const typeAt = (i: number): Block['type'] => (blocks[i].type === 'hr' ? 'p' : blocks[i].type);
 
+  /** replace the selection (or a given range) with text or pasted blocks */
+  function replace(ins: string | Block[], r?: Parameters<typeof span>[0], kind = 'edit', later = false) {
+    const s = span(r);
+    if (!s) return;
+    const { before, after, fromEnd } = pieces(s);
+    const t = typeAt(s.i);
+    let nb: Block[], c: Caret;
+    if (typeof ins === 'string') {
+      // Markdown shortcuts: "- " starts a bullet, "## " a section
+      const short = t === 'p' && before.length <= 3 ? (before + ins).match(/^([-*•]|#{2,3}) /)?.[1] : undefined;
+      if (short) {
+        nb = [{ type: short.startsWith('#') ? (short.length === 2 ? 'h2' : 'h3') : 'li', text: (before + ins).slice(short.length + 1) + after }];
+        c = { b: s.i, end: fromEnd };
+      }
+      else { nb = [{ type: t, text: before + ins + after }]; c = { b: s.i, end: fromEnd, later }; }
+    } else {
+      const list = [...ins];
+      nb = [];
+      if (before.trim()) nb.push(list[0]?.type !== 'hr' ? { type: t, text: before + list.shift()!.text } : { type: t, text: before });
+      nb.push(...list);
+      const last = nb[nb.length - 1];
+      if (after) { if (!last || last.type === 'hr') nb.push({ type: 'p', text: after }); else nb[nb.length - 1] = { ...last, text: last.text + after }; }
+      if (!nb.length) nb = [{ type: t, text: '' }];
+      c = { b: s.i + nb.length - 1, end: fromEnd };
+    }
+    commit([...blocks.slice(0, s.i), ...nb, ...blocks.slice(s.j + 1)], c, kind);
+  }
+
+  /** Enter: split the line; Enter on an empty bullet ends the list */
+  function split() {
+    const s = span();
+    if (!s) return;
+    const { before, after } = pieces(s);
+    const t = typeAt(s.i);
+    const nextType: Block['type'] = t === 'li' ? 'li' : 'p';
+    let nb: Block[];
+    if (t === 'li' && !before.trim() && !after.trim()) { nb = [{ type: 'p', text: '' }]; commit([...blocks.slice(0, s.i), ...nb, ...blocks.slice(s.j + 1)], { b: s.i, off: 0 }); return; }
+    if (!before.trim() && after) nb = [{ type: nextType, text: '' }, { type: t, text: after }];
+    else nb = [{ type: t, text: before }, { type: nextType, text: after }];
+    commit([...blocks.slice(0, s.i), ...nb, ...blocks.slice(s.j + 1)], { b: s.i + 1, off: 0 });
+  }
+
+  function remove(inputType: string, targets: StaticRange[]) {
+    const sel = getSelection();
+    const s = span();
+    if (!sel || !s) return;
+    if (!sel.isCollapsed) return replace('');
+    const back = inputType.includes('Backward');
+    const el = s.a.el, i = s.i;
+    if (el.tagName === 'HR') return commit([...blocks.slice(0, i), ...blocks.slice(i + 1)], { b: Math.max(0, i - 1), end: 0 });
+    const off = offsetIn(el, s.a.point), len = lengthOf(el);
+    if (back && off === 0) {
+      if (blocks[i].type === 'li') return commit(blocks.map((b, k) => (k === i ? { type: 'p', text: b.text } : b)), { b: i, off: 0 });
+      const p = i - 1;
+      if (p < 0) return;
+      if (blocks[p].type === 'hr') return commit([...blocks.slice(0, p), ...blocks.slice(i)], { b: p, off: 0 });
+      const type = blocks[p].text.trim() ? blocks[p].type : blocks[i].type;
+      return commit([...blocks.slice(0, p), { type, text: blocks[p].text + blocks[i].text }, ...blocks.slice(i + 1)], { b: p, end: len });
+    }
+    if (!back && off === len) {
+      const n = i + 1;
+      if (n >= blocks.length) return;
+      if (blocks[n].type === 'hr') return commit([...blocks.slice(0, n), ...blocks.slice(n + 1)], { b: i, off });
+      return commit([...blocks.slice(0, i), { type: blocks[i].type, text: blocks[i].text + blocks[n].text }, ...blocks.slice(n + 1)], { b: i, off });
+    }
+    // inside a line: the browser knows what a character or a word is
+    const t = targets[0];
+    if (t && !t.collapsed && blockOfSame(t, el)) return replace('', t, 'type');
+    sel.modify('extend', back ? 'backward' : 'forward', /Word/.test(inputType) ? 'word' : /Line/.test(inputType) ? 'lineboundary' : 'character');
+    replace('', null, 'type');
+  }
+  const blockOfSame = (r: StaticRange, el: HTMLElement) => el.contains(r.startContainer) && el.contains(r.endContainer);
+
+  /* ---------- formatting ---------- */
+  function mark(m: '**' | '*') {
+    const s = span();
+    if (!s) return;
+    const keep = currentCaret();
+    if (s.i !== s.j) return commit(toggleMark(blocks, s.i, s.j, m), keep);
+    if (s.a.el.tagName === 'HR') return;
+    let { before, mid, after } = pieces(s);
+    if (!mid) { // no selection: the word at the caret
+      const w1 = before.match(/[\p{L}\p{N}_-]*$/u)![0], w2 = after.match(/^[\p{L}\p{N}_-]*/u)![0];
+      if (!w1 && !w2) return;
+      before = before.slice(0, before.length - w1.length); after = after.slice(w2.length); mid = w1 + w2;
+    }
+    const opened = (s: string) => s.endsWith(m) && (m === '**' || !s.endsWith('**'));
+    const closed = (s: string) => s.startsWith(m) && (m === '**' || !s.startsWith('**'));
+    let text: string;
+    if (opened(before) && closed(after)) text = before.slice(0, -m.length) + mid + after.slice(m.length);
+    else {
+      const inner = m === '**' ? mid.replace(/\*\*/g, '') : mid.replace(/(?<!\*)\*(?!\*)/g, '');
+      const lead = inner.match(/^\s*/)![0], trail = inner.match(/\s*$/)![0];
+      text = before + lead + m + inner.trim() + m + trail + after;
+    }
+    commit(blocks.map((b, k) => (k === s.i ? { ...b, text } : b)), keep);
+  }
+  function link() {
+    const s = span();
+    if (!s || s.i !== s.j || s.a.el.tagName === 'HR') return;
+    const { before, mid, after } = pieces(s);
+    const url = prompt('Link address', 'https://');
+    if (!url || !/^(https?:\/\/|mailto:)\S+$/.test(url.trim())) return;
+    const text = before + `[${mid.trim() || url.replace(/^(https?:\/\/|mailto:)/, '')}](${url.trim()})` + after;
+    commit(blocks.map((b, k) => (k === s.i ? { ...b, text } : b)), { b: s.i, end: lengthOf(s.b.el) - offsetIn(s.b.el, s.b.point) });
+  }
+  function setType(type: LineType) {
+    const s = span();
+    const from = s?.i ?? target?.from, to = s?.j ?? target?.to;
+    if (from === undefined || to === undefined) return;
+    const keep = currentCaret();
+    const r = setTypes(blocks, from, to, type);
+    commit(r.blocks, keep && { ...keep, to: { ...keep.to, b: Math.min(keep.to.b, r.to) } });
+  }
+  function divider() {
+    const at = span()?.j ?? hr?.i ?? target?.to;
+    if (at === undefined) return;
+    const tail: Block[] = at === blocks.length - 1 ? [{ type: 'p', text: '' }] : [];
+    commit([...blocks.slice(0, at + 1), { type: 'hr', text: '' }, ...tail, ...blocks.slice(at + 1)], { b: at + 2, off: 0 });
+  }
+  function removeHr() { if (hr) { commit([...blocks.slice(0, hr.i), ...blocks.slice(hr.i + 1)], hr.i > 0 ? { b: hr.i - 1, end: 0 } : null); } }
+
+  /* ---------- browser events ---------- */
+  useEffect(() => {
+    const root = host.current;
+    if (!root || !editable) return;
+    const before = (e: InputEvent) => {
+      const t = e.inputType;
+      if (composing.current || t === 'insertCompositionText') return;
+      e.preventDefault();
+      const targets = e.getTargetRanges?.() ?? [];
+      if (t === 'historyUndo') undo();
+      else if (t === 'historyRedo') redo();
+      else if (t === 'formatBold') mark('**');
+      else if (t === 'formatItalic') mark('*');
+      else if (t === 'insertText') replace(e.data ?? '', null, 'type');
+      else if (t === 'insertReplacementText') replace(e.data ?? e.dataTransfer?.getData('text/plain') ?? '', targets[0] ?? null);
+      else if (t === 'insertLineBreak') replace('\n', null, 'edit', true);
+      else if (t === 'insertParagraph') split();
+      else if (t.startsWith('delete')) remove(t, targets);
+      // anything else (drops, unknown formatting) is ignored: the page only changes through the blocks
+    };
+    root.addEventListener('beforeinput', before);
+    return () => root.removeEventListener('beforeinput', before);
+  });
+
+  // what the formatting bar acts on follows the selection
+  useEffect(() => {
+    if (!editable) return;
+    const f = () => {
+      const s = span();
+      setTarget(t => (s ? (t?.from === s.i && t.to === s.j ? t : { from: s.i, to: s.j }) : host.current?.contains(document.activeElement) ? t : null));
+    };
+    document.addEventListener('selectionchange', f);
+    return () => document.removeEventListener('selectionchange', f);
+  }, [editable, blocks]);
+
+  function onKeyDown(e: React.KeyboardEvent) {
+    const mod = e.ctrlKey || e.metaKey, k = e.key.toLowerCase();
+    if (hr && (e.key === 'Backspace' || e.key === 'Delete')) { e.preventDefault(); removeHr(); }
+    else if (mod && k === 'z') { e.preventDefault(); e.shiftKey ? redo() : undo(); }
+    else if (mod && k === 'y') { e.preventDefault(); redo(); }
+    else if (mod && k === 'b') { e.preventDefault(); mark('**'); }
+    else if (mod && k === 'i') { e.preventDefault(); mark('*'); }
+    else if (mod && k === 'k') { e.preventDefault(); link(); }
+    else if (e.key === 'Tab') e.preventDefault();
+    else if (e.key === 'Escape') { setHr(null); host.current?.blur(); }
+  }
+
+  function selectedBlocks(): Block[] | null {
+    const s = span();
+    const sel = getSelection();
+    if (!s || !sel || sel.isCollapsed) return null;
+    const { mid } = pieces(s);
+    if (s.i === s.j) return [{ type: typeAt(s.i), text: mid }];
+    const first = cut(s.a.el, s.a.point)[1], last = cut(s.b.el, s.b.point)[0];
+    return [{ type: blocks[s.i].type, text: first }, ...blocks.slice(s.i + 1, s.j), { type: blocks[s.j].type, text: last }].filter(b => b.type === 'hr' || b.text.trim());
+  }
+  function onCopy(e: React.ClipboardEvent, isCut = false) {
+    const bs = selectedBlocks();
+    if (!bs) return;
+    e.preventDefault();
+    e.clipboardData.setData('text/plain', blocksToText(bs));
+    e.clipboardData.setData('text/html', blocksToHtml(bs));
+    e.clipboardData.setData(MD_TYPE, serializeBlocks(bs));
+    if (isCut) replace('');
+  }
+  function onPaste(e: React.ClipboardEvent) {
+    e.preventDefault();
+    const cd = e.clipboardData;
+    const md = cd.getData(MD_TYPE), html = cd.getData('text/html'), text = cd.getData('text/plain');
+    const bs = md ? parseBlocks(md) : html ? htmlToBlocks(html) : textToBlocks(text);
+    if (!bs.length) return;
+    replace(bs.length === 1 && bs[0].type !== 'hr' ? bs[0].text : bs);
+  }
+  function onCompositionEnd() {
+    composing.current = false;
+    // the browser typed this one itself (Chinese, Japanese, dead keys …): read the line back
+    const sel = getSelection();
+    const s = span();
+    if (!sel || !s || s.a.el.tagName === 'HR') return;
+    const el = s.a.el;
+    const fromEnd = lengthOf(el) - offsetIn(el, s.a.point);
+    const [text] = cut(el, { node: el, offset: el.childNodes.length });
+    commit(blocks.map((b, k) => (k === s.i ? { ...b, text } : b)), { b: s.i, end: fromEnd }, 'type');
+  }
+
+  /* ---------- tailoring one block ---------- */
   /** the block's box relative to the paper */
   function boxOf(el: HTMLElement) {
     const base = paper.current!.getBoundingClientRect();
@@ -63,197 +357,49 @@ export function DocEditor({ body, meta, onChange, onMeta, readOnly = false, tail
     }
     return new DOMRect(r.left - base.left, r.top - base.top, r.width, r.height);
   }
-
-  function open(el: HTMLElement) {
-    const i = Number(el.dataset.b);
-    anchor.current = i;
-    setSel(null);
-    const r = boxOf(el);
-    // entry headers and contact lines are wrappers; take the font from their first part
-    const cs = getComputedStyle((el.matches('.eh, .contact') && el.firstElementChild) || el);
-    setEdit({
-      i, text: blockToMarkdown(blocks[i]),
-      top: r.top - 5, left: r.left - 7, width: Math.max(r.width + 14, 260), height: r.height + 10,
-      font: { fontFamily: cs.fontFamily, fontSize: cs.fontSize, fontWeight: cs.fontWeight, lineHeight: cs.lineHeight },
-    });
-  }
-
-  function commit(text = edit?.text) {
-    if (!edit || text === undefined) return;
-    const next = serializeBlocks(replaceBlock(blocks, edit.i, text));
-    setEdit(null);
-    if (next !== serializeBlocks(blocks)) onChange?.(next);
-  }
-
-  function insertAfter(kind: 'li' | 'p') {
-    if (!edit) return;
-    const cur = parseBlocks(edit.text);
-    const all = [...blocks.slice(0, edit.i), ...cur, kind === 'li' ? { type: 'li' as const, text: '…' } : { type: 'p' as const, text: '…' }, ...blocks.slice(edit.i + 1)];
-    onChange?.(serializeBlocks(all));
-    setEdit(null);
-  }
-
-  /** ask for a rewrite of block i; `src` is the body to rewrite from (it may hold an edit not saved yet) */
-  async function startReview(i: number, src = body, instruction = '', tries: string[] = []) {
+  async function startReview(i: number, instruction = '', tries: string[] = []) {
     if (!tailor) return;
-    const el = paper.current?.querySelector(`[data-b="${i}"]`) as HTMLElement | null;
-    const b = parseBlocks(src)[i];
+    const el = host.current && blockEl(host.current, i);
+    const b = blocks[i];
     if (!el || !b || b.type === 'hr') return;
     const r = boxOf(el);
     const id = ++reqId.current;
     const base = { i, top: r.bottom + 8, left: Math.max(0, Math.min(r.left - 8, 794 - 470)), width: 470, original: blockToMarkdown(b), instruction, tries, text: '', why: '', unverified: [] as string[], error: '' };
     setReview({ ...base, state: 'loading' });
     try {
-      const x = await tailor(src, i, instruction, tries);
+      const x = await tailor(serializeBlocks(blocks), i, instruction, tries);
       if (id === reqId.current) setReview({ ...base, state: 'ready', text: x.text, why: x.why, unverified: x.unverified, tries: [...tries, x.text] });
     } catch (err) {
       if (id === reqId.current) setReview({ ...base, state: 'error', error: (err as Error).message });
     }
   }
-
   function closeReview() { reqId.current++; setReview(null); }
-
   function accept(text: string) {
     if (!review) return;
-    const next = serializeBlocks(replaceBlock(blocks, review.i, text));
+    const next = replaceBlock(blocks, review.i, text);
     closeReview();
-    if (next !== body) onChange?.(next, { version: true });
+    commit(next, null, 'ai', { version: true });
   }
-
-  /** open the suggestion in the in-place editor, to adjust it before keeping */
+  /** keep the suggestion, then adjust it on the page */
   function editSuggestion() {
     if (!review) return;
-    const el = paper.current?.querySelector(`[data-b="${review.i}"]`) as HTMLElement | null;
-    const text = review.text;
+    const next = replaceBlock(blocks, review.i, review.text);
+    const i = review.i;
     closeReview();
-    if (el) { open(el); setEdit(e => e && { ...e, text }); }
-  }
-
-  function tailorFromEdit() {
-    if (!edit) return;
-    const src = serializeBlocks(replaceBlock(blocks, edit.i, edit.text));
-    const i = edit.i;
-    setEdit(null);
-    if (src !== body) onChange?.(src);
-    // wait for the page to re-render with the edited text before measuring the block
-    requestAnimationFrame(() => startReview(i, src));
-  }
-
-  /* ---- formatting the open line (Markdown) ---- */
-  function setText(text: string, from?: number, to?: number) {
-    setEdit(e => e && { ...e, text });
-    requestAnimationFrame(() => {
-      const t = ta.current;
-      if (!t) return;
-      autosize(t); t.focus();
-      if (from !== undefined) t.setSelectionRange(from, to ?? from);
-    });
-  }
-
-  /** **bold** / *italic*: wraps the selection (or the word at the cursor); again removes it */
-  function wrap(m: string) {
-    if (sel) return rangeMark(m as '**' | '*');
-    const t = ta.current;
-    if (!t) return;
-    let { selectionStart: a, selectionEnd: b } = t;
-    const v = t.value;
-    if (v.slice(a - m.length, a) === m && v.slice(b, b + m.length) === m && !(m === '*' && v.slice(a - 2, a) === '**'))
-      return setText(v.slice(0, a - m.length) + v.slice(a, b) + v.slice(b + m.length), a - m.length, b - m.length);
-    if (a === b) { // no selection: take the word under the cursor
-      while (a > 0 && /[\p{L}\p{N}_-]/u.test(v[a - 1])) a--;
-      while (b < v.length && /[\p{L}\p{N}_-]/u.test(v[b])) b++;
-    }
-    setText(v.slice(0, a) + m + v.slice(a, b) + m + v.slice(b), a + m.length, b + m.length);
-  }
-
-  /** [text](https://…) with the address selected, ready to type over */
-  function link() {
-    const t = ta.current;
-    if (!t) return;
-    const { selectionStart: a, selectionEnd: b, value: v } = t;
-    const label = v.slice(a, b) || 'link text';
-    const md = `[${label}](https://)`;
-    setText(v.slice(0, a) + md + v.slice(b), a + label.length + 3, a + md.length - 1);
-  }
-
-  const lineType = (text: string): LineType => /^### /.test(text) ? 'h3' : /^## /.test(text) ? 'h2' : /^# /.test(text) ? 'h1' : /^[-*•] /.test(text) ? 'li' : 'p';
-
-  /* ---- several lines at once ---- */
-  /** the blocks a mouse selection on the page covers, if it spans more than one */
-  function selectedBlocks(): { from: number; to: number } | null {
-    const s = getSelection();
-    if (!s || s.isCollapsed || !paper.current) return null;
-    const blockOf = (n: Node | null) => (n instanceof Element ? n : n?.parentElement)?.closest('[data-b]') as HTMLElement | null;
-    const a = blockOf(s.anchorNode), f = blockOf(s.focusNode);
-    if (!a || !f || !paper.current.contains(a) || !paper.current.contains(f)) return null;
-    const x = Number(a.dataset.b), y = Number(f.dataset.b);
-    return x === y ? null : { from: Math.min(x, y), to: Math.max(x, y) };
-  }
-  function pickRange(from: number, to: number) {
-    if (edit) commit();
-    getSelection()?.removeAllRanges();
-    setSel({ from: Math.min(from, to), to: Math.max(from, to) });
-  }
-  function onMouseUp(e: React.MouseEvent) {
-    if (readOnly || edit || e.shiftKey) return; // Shift+click is handled by onClick, from our own anchor
-    const r = selectedBlocks();
-    if (r) { swallowClick.current = true; pickRange(r.from, r.to); }
-  }
-  const apply = (next: typeof blocks) => { const md = serializeBlocks(next); if (md !== body) onChange?.(md); };
-  function rangeType(type: LineType) {
-    if (!sel) return;
-    const r = setTypes(blocks, sel.from, sel.to, type);
-    apply(r.blocks);
-    setSel({ from: sel.from, to: r.to });
-  }
-  function rangeMark(m: '**' | '*') { if (sel) apply(toggleMark(blocks, sel.from, sel.to, m)); }
-  /** a divider after the open line or the selection */
-  function divider() {
-    if (edit) {
-      const cur = parseBlocks(edit.text);
-      const all = [...blocks.slice(0, edit.i), ...cur, { type: 'hr' as const, text: '' }, ...blocks.slice(edit.i + 1)];
-      setEdit(null);
-      apply(all);
-    } else if (sel) {
-      apply([...blocks.slice(0, sel.to + 1), { type: 'hr' as const, text: '' }, ...blocks.slice(sel.to + 1)]);
-      setSel(null);
-    }
-  }
-  useEffect(() => {
-    if (!sel) return;
-    const k = (e: KeyboardEvent) => {
-      const mod = e.ctrlKey || e.metaKey;
-      if (e.key === 'Escape') setSel(null);
-      else if (mod && e.key.toLowerCase() === 'b') { e.preventDefault(); rangeMark('**'); }
-      else if (mod && e.key.toLowerCase() === 'i') { e.preventDefault(); rangeMark('*'); }
-    };
-    addEventListener('keydown', k);
-    return () => removeEventListener('keydown', k);
-  });
-  // the selection belongs to this document's text; a new text (another document, an undo) clears it
-  useEffect(() => { setSel(s => (s && s.to < blocks.length ? s : null)); }, [blocks.length]);
-
-  function setType(type: LineType) {
-    if (sel) return rangeType(type);
-    if (!edit) return;
-    let rest = edit.text.replace(/^(#{1,3}\s+|[-*•]\s+)/, '');
-    if (type === 'h3' && !rest.includes(' | ')) rest += ' | dates';
-    const text = LINE_PREFIX[type] + rest;
-    setText(text, text.length);
+    commit(next, { b: i, end: 0 }, 'ai', { version: true });
   }
 
   function onClick(e: React.MouseEvent) {
     if (readOnly) return;
-    if (swallowClick.current) { swallowClick.current = false; return; } // the end of a drag-selection
     const el = (e.target as HTMLElement).closest('[data-b]') as HTMLElement | null;
     if ((e.target as HTMLElement).closest('a')) e.preventDefault();
-    if (e.shiftKey && el && anchor.current !== null) { pickRange(anchor.current, Number(el.dataset.b)); return; }
-    if (sel) setSel(null);
-    if (edit) { commit(); return; }
-    if (review) { closeReview(); if (!tailorMode) return; }
-    if (!el) return;
-    if (tailorMode && tailor) startReview(Number(el.dataset.b));
-    else open(el);
+    if (tailorMode) {
+      if (review) { closeReview(); }
+      if (el && tailor) startReview(indexOf(el));
+      return;
+    }
+    if (el?.tagName === 'HR') { const r = boxOf(el); setHr({ i: indexOf(el), top: r.top }); getSelection()?.removeAllRanges(); host.current?.focus({ preventScroll: true }); }
+    else setHr(null);
   }
 
   useEffect(() => {
@@ -263,43 +409,27 @@ export function DocEditor({ body, meta, onChange, onMeta, readOnly = false, tail
     return () => window.removeEventListener('keydown', k);
   }, [review]);
 
+  const barTarget = hr ? { type: null, many: 0 } : target ? { type: rangeKind(blocks.slice(target.from, target.to + 1)), many: target.to > target.from ? target.to - target.from + 1 : 0 } : null;
+
   return (
     <div className="paper-wrap" style={{ position: 'relative' }}>
-      {!readOnly && <FormatBar style={meta.style ?? {}} wrap={wrap} link={link} setType={setType} divider={divider}
-        target={edit ? { type: lineType(edit.text), many: 0 } : sel ? { type: rangeKind(blocks.slice(sel.from, sel.to + 1)), many: sel.to - sel.from + 1 } : null}
+      {!readOnly && <FormatBar style={meta.style ?? {}} target={tailorMode ? null : barTarget} wrap={m => mark(m as '**' | '*')} link={link} setType={setType} divider={divider}
+        undo={hist.current.past.length ? undo : undefined} redo={hist.current.future.length ? redo : undefined}
         setStyle={onMeta && (st => onMeta({ style: st }))} />}
-      <div ref={paper} className={'paper' + (readOnly ? '' : ' editable')} style={{ width: 794 }} onClick={onClick} onMouseUp={onMouseUp}
-        onMouseDown={e => { if (e.shiftKey && anchor.current !== null) e.preventDefault(); /* no browser text selection on Shift+click */ }}>
-        <div dangerouslySetInnerHTML={{ __html: html }} />
+      <div ref={paper} className={'paper' + (readOnly ? '' : ' editable') + (tailorMode ? ' tailoring' : '')} style={{ width: 794 }} onClick={onClick}>
+        <div ref={host} className="page-host" dangerouslySetInnerHTML={{ __html: html }}
+          contentEditable={editable} suppressContentEditableWarning spellCheck={editable}
+          onKeyDown={editable ? onKeyDown : undefined} onCopy={editable ? e => onCopy(e) : undefined} onCut={editable ? e => onCopy(e, true) : undefined}
+          onPaste={editable ? onPaste : undefined} onDragStart={e => editable && e.preventDefault()} onDrop={e => editable && e.preventDefault()}
+          onCompositionStart={() => { composing.current = true; }} onCompositionEnd={editable ? onCompositionEnd : undefined} />
         {Array.from({ length: pages - 1 }, (_, k) => (
           <div key={k} className="pbreak" style={{ top: (k + 1) * PAGE_H }}><span>page {k + 2}</span></div>
         ))}
-        {edit && (
-          <>
-            <textarea
-              ref={ta} className="blk-edit" value={edit.text} spellCheck
-              style={{ top: edit.top, left: edit.left, width: edit.width, minHeight: edit.height, ...edit.font } as React.CSSProperties}
-              onClick={e => e.stopPropagation()}
-              onChange={e => { setEdit({ ...edit, text: e.target.value }); autosize(e.target); }}
-              onBlur={() => commit()}
-              onKeyDown={e => {
-                const mod = e.ctrlKey || e.metaKey;
-                if (mod && e.key.toLowerCase() === 'b') { e.preventDefault(); wrap('**'); }
-                else if (mod && e.key.toLowerCase() === 'i') { e.preventDefault(); wrap('*'); }
-                else if (mod && e.key.toLowerCase() === 'k') { e.preventDefault(); link(); }
-                else if (e.key === 'Escape') { e.preventDefault(); setEdit(null); }
-                else if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); commit(); }
-              }}
-            />
-            <div className="blk-tools" style={{ top: edit.top - 26, left: edit.left }} onMouseDown={e => e.preventDefault()} onClick={e => e.stopPropagation()}>
-              <button onClick={() => commit()}>✓ Keep (Enter)</button>
-              <button className="soft" onClick={() => insertAfter('li')}>+ bullet below</button>
-              <button className="soft" onClick={() => insertAfter('p')}>+ paragraph below</button>
-              {tailor && <button className="ai" onClick={tailorFromEdit}>✨ Tailor</button>}
-              <button className="soft" onClick={() => commit('')}>Delete</button>
-              <button className="soft" onClick={() => setEdit(null)}>Cancel (Esc)</button>
-            </div>
-          </>
+        {hr && editable && (
+          <div className="blk-tools" style={{ top: hr.top - 30, right: 40 }} onMouseDown={e => e.preventDefault()} onClick={e => e.stopPropagation()}>
+            <button onClick={removeHr}>Remove divider (Delete)</button>
+            <button className="soft" onClick={() => setHr(null)}>Keep</button>
+          </div>
         )}
         {review && (
           <div className="rv" style={{ top: review.top, left: review.left, width: review.width }} onClick={e => e.stopPropagation()}>
@@ -313,14 +443,14 @@ export function DocEditor({ body, meta, onChange, onMeta, readOnly = false, tail
                   {review.why && <div className="rv-why">{review.why}</div>}
                   {review.unverified.length > 0 && <div className="rv-warn">Not in your documents yet: <b>{review.unverified.join(', ')}</b>. Only accept if that's true for you.</div>}
                 </>)}
-            <form className="rv-ask" onSubmit={e => { e.preventDefault(); startReview(review.i, body, review.instruction, review.tries); }}>
+            <form className="rv-ask" onSubmit={e => { e.preventDefault(); startReview(review.i, review.instruction, review.tries); }}>
               <input className="input" placeholder="Wish (optional), e.g. shorter · mention SQL · more concrete" value={review.instruction}
                 onChange={e => setReview({ ...review, instruction: e.target.value })} />
             </form>
             <div className="rv-btns">
               <button className="btn sm pri" disabled={review.state !== 'ready' || review.text === review.original} onClick={() => accept(review.text)}>Accept</button>
-              <button className="btn sm" disabled={review.state !== 'ready'} onClick={editSuggestion}>Edit</button>
-              <button className="btn sm" disabled={review.state === 'loading'} onClick={() => startReview(review.i, body, review.instruction, review.tries)}>Retry</button>
+              <button className="btn sm" disabled={review.state !== 'ready' || review.text === review.original} onClick={editSuggestion} title="Accept, then adjust it yourself">Accept &amp; edit</button>
+              <button className="btn sm" disabled={review.state === 'loading'} onClick={() => startReview(review.i, review.instruction, review.tries)}>Retry</button>
               <span className="sp" />
               <button className="btn sm" onClick={closeReview}>{review.state === 'ready' ? 'Reject' : 'Close'}</button>
             </div>
@@ -328,31 +458,28 @@ export function DocEditor({ body, meta, onChange, onMeta, readOnly = false, tail
         )}
       </div>
       {!readOnly && tailorMode && <p className="muted" style={{ textAlign: 'center', fontSize: 12, margin: '14px 0 0' }}>✨ Tailor mode: click a line to get a version tailored to this job. Nothing changes until you press Accept.</p>}
-      {!readOnly && !tailorMode && <p className="muted" style={{ textAlign: 'center', fontSize: 12, margin: '14px 0 0' }}>Click any line to edit it. Markdown works: **bold**, *italic*, "- " for bullets, "## " for a section, "### Title | date" for an entry. Shift+Enter adds a line break.</p>}
+      {!readOnly && !tailorMode && <p className="muted" style={{ textAlign: 'center', fontSize: 12, margin: '14px 0 0' }}>Type anywhere on the page. Enter starts a new line, Shift+Enter breaks a line, "- " starts a bullet. Ctrl+Z undoes, Ctrl+Shift+Z redoes.</p>}
     </div>
   );
 }
-
-function autosize(t: HTMLTextAreaElement) { t.style.height = 'auto'; t.style.height = t.scrollHeight + 2 + 'px'; }
 
 export const pageCount = (h: number) => Math.max(1, Math.ceil(h / PAGE_H));
 
 /** the type all selected lines share, or null when they differ */
 const rangeKind = (bs: { type: string }[]): LineType | null => { const t = new Set(bs.filter(b => b.type !== 'hr').map(b => b.type)); return t.size === 1 ? [...t][0] as LineType : null; };
-const LINE_PREFIX: Record<LineType, string> = { h1: '# ', h2: '## ', h3: '### ', li: '- ', p: '' };
 const TYPES: [LineType, string, string][] = [['p', 'Text', 'Paragraph'], ['li', 'Bullet', 'Bullet point'], ['h2', 'Section', 'Section heading'], ['h3', 'Entry', 'Entry: "Title | dates", with the place on the next line']];
 const SIZES = [85, 90, 95, 100, 105, 110, 115, 120];
 
 /**
-  Sticky bar above the page. Line tools (type, bold, italic, link) act on the open line, so they keep the
-  textarea's focus (mousedown is cancelled). Size, spacing, alignment and margins apply to the whole
-  document: a CV reads better when it is consistent, and these are what you adjust to fit a page.
+  Sticky bar above the page. Line tools (type, bold, italic, link, divider) act on the lines the selection
+  touches; the bar never takes the focus from the page (mousedown is cancelled). Size, spacing, alignment and
+  margins apply to the whole document: a CV reads better when it is consistent.
 */
-function FormatBar({ target, style, wrap, link, setType, divider, setStyle }: {
-  /** the open line, or several selected lines (many > 0); null when nothing is selected */
+function FormatBar({ target, style, wrap, link, setType, divider, setStyle, undo, redo }: {
+  /** the selected lines (many > 1 when several); null when the caret is not on the page */
   target: { type: LineType | null; many: number } | null; style: DocStyle;
   wrap: (m: string) => void; link: () => void; setType: (t: LineType) => void; divider: () => void;
-  setStyle?: (s: DocStyle) => void;
+  setStyle?: (s: DocStyle) => void; undo?: () => void; redo?: () => void;
 }) {
   const keep = (e: React.MouseEvent) => { if (!(e.target as HTMLElement).closest('select')) e.preventDefault(); };
   // stick just below the screen's own sticky toolbar (.edbar), whose height changes when it wraps
@@ -368,7 +495,7 @@ function FormatBar({ target, style, wrap, link, setType, divider, setStyle }: {
   const off = !target;
   const editing = target?.type ?? null;
   const many = target?.many ?? 0;
-  const hint = off ? 'Click a line on the page, or select several lines (drag across them, or Shift+click)' : undefined;
+  const hint = off ? 'Click into the page, or select several lines' : undefined;
   const size = style.size ?? 100;
   const set = (patch: Partial<DocStyle>) => {
     const next: DocStyle = { ...style, ...patch };
@@ -382,6 +509,10 @@ function FormatBar({ target, style, wrap, link, setType, divider, setStyle }: {
 
   return (
     <div ref={ref} className="fmtbar" style={{ top: top + 8 }} onMouseDown={keep} onClick={e => e.stopPropagation()}>
+      <div className="fg">
+        <button disabled={!undo} title="Undo (Ctrl+Z)" onClick={undo}>↶</button>
+        <button disabled={!redo} title="Redo (Ctrl+Shift+Z)" onClick={redo}>↷</button>
+      </div>
       <div className="fg" title={hint}>
         {TYPES.map(([t, label, title]) => (
           <button key={t} className={editing === t ? 'on' : ''} disabled={off || editing === 'h1'} title={title} onClick={() => setType(t)}>{label}</button>
@@ -395,7 +526,6 @@ function FormatBar({ target, style, wrap, link, setType, divider, setStyle }: {
       </div>
       {many > 0 && <span className="fmt-count">{many} lines</span>}
       {setStyle && <>
-        
         <div className="fg" title="Text size for the whole document">
           <button onClick={() => step(-1)} disabled={size <= SIZES[0]} title="Smaller">A−</button>
           <span className="val">{size}%</span>

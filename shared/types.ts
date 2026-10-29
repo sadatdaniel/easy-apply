@@ -28,6 +28,8 @@ export interface Job {
   extras: string[];      // attached files (PDFs) in the job folder
   bucket: string[];      // ordered selection for export (subset of docs + extras)
   exportName: string;
+  /** where each document was copied from: a My documents id, or "example:<id>" (for "recently used") */
+  sources?: Record<string, string>;
 }
 
 export type JobFields = Pick<Job, 'title' | 'company' | 'location' | 'salary' | 'deadline' | 'language' | 'url' | 'keywords' | 'contact' | 'notes'>;

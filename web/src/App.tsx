@@ -5,18 +5,17 @@ import { connect, pickFolder, type Conn } from './backend';
 import { Connect, Onboarding } from './Setup';
 import { UpdateBanner } from './Update';
 import { useAiStatus } from './aiStatus';
-import { Applications } from './Applications';
+import { Applications, STEPS } from './Applications';
 import { useAction } from './ui';
 import { Extras, MyCv, ProfileView, Settings, Tracker } from './Views';
 
 type View = 'apps' | 'templates' | 'extras' | 'profile' | 'tracker' | 'settings';
 const VIEWS: [View, string][] = [['apps', 'Applications'], ['templates', 'My documents'], ['extras', 'Extras'], ['profile', 'Profile'], ['tracker', 'Tracker'], ['settings', 'Settings']];
-const STEP_NAMES = ['Posting & details', 'Choose documents', 'Edit documents', 'Add extras', 'Final bucket'];
 
 // view, job and step live in the URL hash so reloads and back/forward keep your place
 function readHash() {
   const [v, job, step] = location.hash.slice(1).split('/');
-  return { view: (VIEWS.some(([k]) => k === v) ? v : 'apps') as View, job: job ? decodeURIComponent(job) : null, step: Number(step) || 0 };
+  return { view: (VIEWS.some(([k]) => k === v) ? v : 'apps') as View, job: job ? decodeURIComponent(job) : null, step: Math.min(Number(step) || 0, 2) };
 }
 
 export function App() {
@@ -65,7 +64,7 @@ function Main({ changeFolder }: { changeFolder: () => void }) {
       <div className="titlebar">
         <div className="brand">easy<span>·</span>apply</div>
         <div className="seg">{VIEWS.map(([k, l]) => <button key={k} className={nav.view === k ? 'on' : ''} onClick={() => setNav(n => ({ ...n, view: k }))}>{l}</button>)}</div>
-        <div className="crumbs">{nav.view === 'apps' && (nav.job === 'new' ? <><b>New application</b></> : job && <>Applications › <b>{job.company || job.title}</b> › {STEP_NAMES[nav.step]}</>)}</div>
+        <div className="crumbs">{nav.view === 'apps' && (nav.job === 'new' ? <><b>New application</b></> : job && <>Applications › <b>{job.company || job.title}</b> › {STEPS[nav.step]}</>)}</div>
         <AiChip ai={state.ai} open={() => setNav(n => ({ ...n, view: 'settings' }))} />
       </div>
       {nav.view === 'apps' && <Applications state={state} refresh={refresh} jobId={nav.job} setJobId={job => setNav(n => ({ ...n, job }))} step={nav.step} setStep={step => setNav(n => ({ ...n, step }))} />}
