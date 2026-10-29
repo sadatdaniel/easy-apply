@@ -59,9 +59,9 @@ I believe AI that runs on your own computer is the future, so local models are f
 
 1. Install Ollama from [ollama.com](https://ollama.com) and download a model, for example: `ollama pull gemma4:e2b`
 2. Let the Easy Apply website talk to it. Ollama only answers pages it trusts, so add Easy Apply's address once:
-   - **Windows:** Settings › System › About › Advanced system settings › Environment Variables › New user variable: name `OLLAMA_ORIGINS`, value `https://easy-apply.pages.dev`. Then quit Ollama from the system tray and start it again.
-   - **macOS:** in Terminal, `launchctl setenv OLLAMA_ORIGINS "https://easy-apply.pages.dev"`, then quit and reopen Ollama.
-   - **Linux:** `sudo systemctl edit ollama.service`, add `Environment="OLLAMA_ORIGINS=https://easy-apply.pages.dev"` under `[Service]`, then `sudo systemctl restart ollama`.
+   - **Windows:** Settings › System › About › Advanced system settings › Environment Variables › New user variable: name `OLLAMA_ORIGINS`, value `https://easy-apply.sadatdaniel.workers.dev`. Then quit Ollama from the system tray and start it again.
+   - **macOS:** in Terminal, `launchctl setenv OLLAMA_ORIGINS "https://easy-apply.sadatdaniel.workers.dev"`, then quit and reopen Ollama.
+   - **Linux:** `sudo systemctl edit ollama.service`, add `Environment="OLLAMA_ORIGINS=https://easy-apply.sadatdaniel.workers.dev"` under `[Service]`, then `sudo systemctl restart ollama`.
 3. In Easy Apply, open Settings › AI providers, add **Ollama (local)** and pick your model. Chrome or Edge may ask once whether the site may connect to devices on your local network; allow it, since that is how it reaches Ollama on your computer.
 
 LM Studio works the same way: turn on CORS in its server settings.
@@ -76,7 +76,7 @@ LM Studio works the same way: turn on CORS in its server settings.
 
 ## Get started
 
-Open **[easy-apply.pages.dev](https://easy-apply.pages.dev)** in Chrome or Edge. Nothing to install: choose where to keep your files, upload your CV and cover letter, and Easy Apply guides you through the rest. After the first visit it also works offline, and you can install it as an app from the address bar.
+Open **[easy-apply.sadatdaniel.workers.dev](https://easy-apply.sadatdaniel.workers.dev)** in Chrome or Edge. Nothing to install: choose where to keep your files, upload your CV and cover letter, and Easy Apply guides you through the rest. After the first visit it also works offline (the first visit downloads the whole app, about 5 MB, so give it a minute), and you can install it as an app from the address bar.
 
 **Run it yourself:** you need [Node.js](https://nodejs.org) (version 20 or newer).
 
