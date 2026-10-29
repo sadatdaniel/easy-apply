@@ -11,6 +11,8 @@ Data Engineer
 
 +49 151 000 0000 | alex@example.com | github.com/alex-example | Hamburg
 
+---
+
 Data engineer with five years of experience turning messy operational data into reliable pipelines and clear reports. Looking for a team that ships data products people use every day.
 
 ## Skills
@@ -47,27 +49,21 @@ University of Hamburg
 
 const LETTER = `# Alex Example
 
-alex@example.com · +49 151 000 0000
+alex@example.com · +49 151 000 0000 · Hamburg
 
 ---
 
-{{today}}
+**Application: Data Engineer**
 
-**{{company}}**
+Dear Hiring Team,
 
-{{job_location}}
-
-**Application: {{job_title}}**
-
-Dear {{company}} team,
-
-I'm applying for the {{job_title}} role. For the past five years I have turned messy operational data into pipelines and reports that people rely on every morning, and I would love to do the same at {{company}}.
+I'm applying for the Data Engineer role. For the past five years I have turned messy operational data into pipelines and reports that people rely on every morning, and I would love to do the same for your team.
 
 At Harbour Foods I build the Python and SQL pipelines behind our daily sales and delivery dashboards. When I joined, the weekly reports were assembled by hand in Excel; I moved them to automated jobs, which now save the team about four hours every week and arrive before the Monday meeting.
 
 Before that, at Kiel Apps, I developed REST APIs for a mobile app with 20,000 users and introduced automated tests and code reviews for the backend team.
 
-I would be glad to show in a conversation how I could help {{company}}. Thank you for your time.
+I would be glad to show in a conversation how I could help. Thank you for your time.
 
 Kind regards,
 
@@ -76,5 +72,5 @@ Alex Example
 
 export const EXAMPLES: Example[] = [
   { id: 'example-cv', meta: { title: 'Example CV', kind: 'cv', lang: 'en', theme: 'classic' }, body: CV, note: 'A complete one-page CV of a made-up data engineer.' },
-  { id: 'example-letter', meta: { title: 'Example cover letter', kind: 'cover', lang: 'en', theme: 'classic' }, body: LETTER, note: 'Fills in the company, role and date of each job.' },
+  { id: 'example-letter', meta: { title: 'Example cover letter', kind: 'cover', lang: 'en', theme: 'classic' }, body: LETTER, note: 'A short, complete cover letter of a made-up data engineer.' },
 ];

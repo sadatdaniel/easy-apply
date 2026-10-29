@@ -14,14 +14,13 @@ beforeEach(async () => {
 });
 
 describe('jobs', () => {
-  it('creates a dated folder without (m/w/d) and fills placeholders when a template is copied in', async () => {
+  it('creates a dated folder without (m/w/d), and still fills placeholders an older letter may hold', async () => {
     const job = await store.createJob({ title: 'Data Engineer (m/w/d)', company: 'Acme GmbH', location: 'Berlin' }, 'posting text');
     expect(job.id).toMatch(/^\d{4}-\d\d-\d\d_acme-gmbh_data-engineer$/);
-    const name = await store.addDocFromTemplate(job.id, 'cover-en');
+    const old = await store.createTemplate({ title: 'Old letter', kind: 'cover', lang: 'en', theme: 'classic' }, '# {{name}}\n\n**Application for {{job_title}}**\n\nDear {{company}} team\n');
+    const name = await store.addDocFromTemplate(job.id, old.id);
     const doc = await store.getDoc(job.id, name);
-    expect(doc.body).toContain('# Your Name');
-    expect(doc.body).toContain('Application for Data Engineer (m/w/d)');
-    expect(doc.body).not.toContain('{{company}}');
+    expect(doc.body).toBe('# Alex Example\n\n**Application for Data Engineer (m/w/d)**\n\nDear Acme GmbH team\n');
     expect((await store.getJob(job.id)).bucket).toEqual([name]);
   });
 
@@ -170,13 +169,13 @@ describe('main CV', () => {
 
 
 describe('documents in an application', () => {
-  it('copies an example in, filled for the job, and remembers where each copy came from', async () => {
+  it('copies an example in as it is, and remembers where each copy came from', async () => {
     const job = await store.createJob({ title: 'Data Engineer', company: 'Lumen Labs', location: 'Berlin' });
     const letter = await store.addDocFromExample(job.id, 'example-letter');
     const cv = await store.addDocFromTemplate(job.id, 'cv-en');
     const doc = await store.getDoc(job.id, letter);
     expect(doc.meta.kind).toBe('cover');
-    expect(doc.body).toContain('Dear Lumen Labs team');
+    expect(doc.body).toContain('Dear Hiring Team');
     expect(doc.body).not.toContain('{{');
     expect((await store.getJob(job.id)).sources).toEqual({ [letter]: 'example:example-letter', [cv]: 'cv-en' });
     await expect(store.addDocFromExample(job.id, 'nope')).rejects.toThrow(/not found/);

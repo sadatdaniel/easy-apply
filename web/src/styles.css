@@ -190,7 +190,6 @@ label.f.ai > span::after { content:" ✨"; }
 .drop.over { border-color:var(--accent); background:var(--accent-soft); color:var(--accent-text); }
 .bk { display:grid; grid-template-columns:minmax(0,1fr) 300px; gap:24px; }
 .bi { display:flex; align-items:center; gap:12px; padding:10px 12px; background:var(--paper); border:1px solid var(--line); border-radius:calc(var(--radius) + 2px); margin-bottom:8px; cursor:grab; }
-.bi.dragging { opacity:.4; }
 .bi .h { color:var(--muted); letter-spacing:-2px; }
 .bi .n { font-family:var(--mono); font-size:14px; width:20px; color:var(--muted); }
 .bi .tx { flex:1; min-width:0; } .bi small { color:var(--muted); }
@@ -494,13 +493,15 @@ table.t tr.closed td { color:var(--muted); }
 .btn.sm:has(> .ico:only-child) { padding:4px 8px; display:inline-grid; place-items:center; }
 .btn.tailor { font-weight:700; letter-spacing:.01em; }
 .btn.tailor.on { background:var(--accent-soft); color:var(--accent-text); border-color:var(--accent); box-shadow:inset 0 0 0 1px var(--accent); }
-.scard.dragging { opacity:.45; }
 .scard.off { opacity:.6; }
 .strip { user-select:none; }
 .strip .scard:not(.slot) { cursor:grab; touch-action:none; }
-.strip.sorting, .strip.sorting .scard { cursor:grabbing; }
-.strip.sorting .scard:not(.dragging) { transition:transform .12s; }
-.scard.dragging { box-shadow:var(--shadow-lg); }
+/* picked up: lifted, the rest makes room */
+[data-lifted] { box-shadow:0 14px 34px rgba(16,24,40,.22), 0 2px 6px rgba(16,24,40,.1) !important; }
+.scard[data-lifted] { border-color:var(--accent); }
+.bi[data-lifted] { border-color:var(--accent); background:var(--paper); }
+body.sorting, body.sorting * { cursor:grabbing !important; user-select:none !important; }
+.bi { touch-action:none; user-select:none; }
 
 /* ---------- My documents: a folder, like the picker ---------- */
 .library { flex:1; min-height:0; display:grid; grid-template-columns:200px minmax(0,1fr) 340px; background:var(--paper); }
@@ -511,3 +512,11 @@ table.t tr.closed td { color:var(--muted); }
 .lib-btns { display:flex; gap:6px; flex-wrap:wrap; }
 .lib-acts { display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
 .doc-ic { width:14px; height:18px; border:1.5px solid var(--muted); border-radius:2px; background:var(--paper); flex:none; }
+
+/* ---------- the editor shows real pages, as the PDF will have them ---------- */
+.paper.paged-view { box-shadow:none; background:transparent; }
+.page-card { position:absolute; left:0; right:0; background:#fff; box-shadow:var(--shadow); border-radius:2px; }
+.page-margin { position:absolute; left:0; right:0; background:#fff; pointer-events:none; z-index:1; }
+.page-margin span { position:absolute; right:14px; bottom:10px; font:11px var(--font); color:#b5bac3; }
+.page-mask { position:absolute; left:-1px; right:-1px; background:var(--bg); pointer-events:none; z-index:1; }
+.paper .rv, .paper .blk-tools { z-index:7; }

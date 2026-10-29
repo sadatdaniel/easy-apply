@@ -6,6 +6,7 @@ import type { AppState, DocKind, DocMeta, Job, TemplateInfo } from '@shared/type
 import { api, type Doc } from './api';
 import { DocWorkspace, type DocStore } from './DocWorkspace';
 import { readCvFile } from './ImportCv';
+import { useSortable } from './sortable';
 import { ContextMenu, useAction, useToast, type MenuItem } from './ui';
 
 /*
@@ -28,11 +29,7 @@ export function DocumentsStep({ state, job, reload, active, setActive, next, bac
   const [picker, setPicker] = useState<{ want: Want; replace?: string } | null>(null);
   const [menu, setMenu] = useState<{ x: number; y: number; items: MenuItem[] } | null>(null);
   const [over, setOver] = useState(false);
-  const [order, setOrder] = useState<string[] | null>(null); // while a card is dragged
-  const [dragging, setDragging] = useState<string | null>(null);
-  // a card follows the pointer once it has moved a few pixels; until then a press is a click
-  const press = useRef<{ name: string; x: number; y: number; moved: boolean } | null>(null);
-  const swallowClick = useRef(false);
+  const [order, setOrder] = useState<string[] | null>(null); // a new order, shown while it saves
   const run = useAction();
   const toast = useToast();
 
@@ -49,43 +46,12 @@ export function DocumentsStep({ state, job, reload, active, setActive, next, bac
   const files = order ?? saved;
   async function reorder(next: string[] | null) {
     if (!next || next.join('|') === saved.join('|')) { setOrder(null); return; }
+    setOrder(next);
     await run(() => api.setBucket(job.id, next.filter(n => job.bucket.includes(n))));
     await reload();
     setOrder(null);
   }
-  // pointer events rather than the browser's drag and drop: it works the same everywhere, cards included
-  const live = useRef({ files, order, reorder });
-  live.current = { files, order, reorder };
-  useEffect(() => {
-    const move = (e: PointerEvent) => {
-      const p = press.current;
-      if (!p) return;
-      if (!p.moved && Math.hypot(e.clientX - p.x, e.clientY - p.y) < 6) return;
-      if (!p.moved) { p.moved = true; setDragging(p.name); }
-      const el = (document.elementFromPoint(e.clientX, e.clientY) as HTMLElement | null)?.closest<HTMLElement>('[data-card]');
-      const over = el?.dataset.card;
-      if (!el || !over || over === p.name) return;
-      const r = el.getBoundingClientRect();
-      const cur = live.current.files;
-      const next = cur.filter(x => x !== p.name);
-      next.splice(next.indexOf(over) + (e.clientX > r.left + r.width / 2 ? 1 : 0), 0, p.name);
-      if (next.join('|') !== cur.join('|')) setOrder(next);
-    };
-    const up = () => {
-      const p = press.current;
-      press.current = null;
-      if (!p?.moved) return;
-      // the click that ends a drag is not a click; it comes right after this, or not at all
-      swallowClick.current = true;
-      setTimeout(() => { swallowClick.current = false; }, 0);
-      setDragging(null);
-      live.current.reorder(live.current.order);
-    };
-    addEventListener('pointermove', move);
-    addEventListener('pointerup', up);
-    addEventListener('pointercancel', up);
-    return () => { removeEventListener('pointermove', move); removeEventListener('pointerup', up); removeEventListener('pointercancel', up); };
-  }, []);
+  const sort = useSortable(files, 'x', reorder);
   const kindOf = (n: string): DocKind | 'file' => (isFile(n) ? 'file' : docs[n]?.meta.kind ?? 'other');
   const has = (k: DocKind) => files.some(n => kindOf(n) === k);
   const current = active && files.includes(active) ? active : files[0] ?? null;
@@ -144,19 +110,17 @@ export function DocumentsStep({ state, job, reload, active, setActive, next, bac
 
   return (
     <>
-      <div className={'strip' + (over ? ' over' : '') + (dragging ? ' sorting' : '')}
+      <div className={'strip' + (over ? ' over' : '') + (sort.dragging ? ' sorting' : '')}
         onDragOver={e => { if (e.dataTransfer.types.includes('Files')) { e.preventDefault(); setOver(true); } }}
         onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setOver(false); }}
         onDrop={e => { e.preventDefault(); setOver(false); drop(e.dataTransfer.files); }}>
         {files.map(n => (
-          <button key={n} data-card={n} className={'scard' + (n === current ? ' on' : '') + (dragging === n ? ' dragging' : '') + (job.bucket.includes(n) ? '' : ' off')}
-            onClick={() => { if (swallowClick.current) { swallowClick.current = false; return; } setActive(n); }}
-            onContextMenu={e => cardMenu(n, e)} title={`${n} · drag to change the order they are sent in`}
-            onPointerDown={e => { if (e.button === 0 && !(e.target as HTMLElement).closest('.more')) press.current = { name: n, x: e.clientX, y: e.clientY, moved: false }; }}
-            onDragStart={e => e.preventDefault()}>
+          <button key={n} {...sort.item(n)} className={'scard' + (n === current ? ' on' : '') + (job.bucket.includes(n) ? '' : ' off')}
+            onClick={() => { if (!sort.clickWasDrag()) setActive(n); }}
+            onContextMenu={e => cardMenu(n, e)} title={`${n} · drag to change the order they are sent in`}>
             <span className="th">{isFile(n) ? <FileThumb job={job.id} name={n} /> : docs[n] && <MiniDoc doc={docs[n]} />}</span>
             <span className="tx"><b>{docs[n]?.meta.title ?? n}</b><small>{job.bucket.includes(n) ? `${KIND[kindOf(n)]} · ${n}` : 'left out of sending'}</small></span>
-            <span className="more" role="button" aria-label="More" onClick={e => cardMenu(n, e)}>⋯</span>
+            <span className="more" role="button" aria-label="More" data-nodrag onClick={e => cardMenu(n, e)}>⋯</span>
           </button>
         ))}
         {!has('cv') && <button className="scard slot" onClick={() => setPicker({ want: 'cv' })}><span className="plus">+</span><span className="tx"><b>Choose a CV</b><small>from My documents or an example</small></span></button>}

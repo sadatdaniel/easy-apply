@@ -3,9 +3,11 @@ import { blockToMarkdown, parseBlocks, replaceBlock, serializeBlocks, setTypes, 
 import { renderDoc } from '@shared/render';
 import { wordDiff } from '@shared/diff';
 import type { DocMeta, DocStyle } from '@shared/types';
+import { CONTENT, MARGIN, PAGE_H, paginate } from './paginate';
 import { blockEl, blocksToHtml, blocksToText, cut, htmlToBlocks, indexOf, lengthOf, MD_TYPE, offsetIn, placeCaret, prepare, resolve, textToBlocks, type Caret } from './pageEdit';
 
-const PAGE_H = 1123; // A4 at 96 dpi
+const GAP = 28; // between pages on screen
+const PITCH = PAGE_H + GAP;
 
 interface Review {
   i: number; top: number; left: number; width: number;
@@ -66,13 +68,27 @@ export function DocEditor({ body, meta, onChange, onMeta, readOnly = false, tail
     const root = host.current;
     if (!root) return;
     if (editable) prepare(root);
-    const sheet = root.querySelector('.sheet') as HTMLElement | null;
-    if (sheet) setPages(Math.max(1, Math.ceil((sheet.scrollHeight - 2) / PAGE_H)));
     root.querySelectorAll('.reviewing, .picked').forEach(e => e.classList.remove('reviewing', 'picked'));
     if (review) root.querySelectorAll(`[data-b="${review.i}"]`).forEach(e => e.classList.add('reviewing'));
     if (hr) blockEl(root, hr.i)?.classList.add('picked');
     if (caret.current && editable) { root.focus({ preventScroll: true }); placeCaret(root, caret.current); caret.current = null; }
   });
+
+  // pages: laid out exactly as the PDF will break them (see paginate.ts); again once the fonts have loaded
+  const layoutPages = () => {
+    const sheet = host.current?.querySelector<HTMLElement>('.sheet');
+    if (!sheet) return;
+    sheet.classList.add('paged');
+    setPages(paginate(sheet, PITCH).pages);
+  };
+  useLayoutEffect(layoutPages, [html]);
+  useEffect(() => {
+    let live = true;
+    document.fonts.ready.then(() => { if (live) layoutPages(); });
+    const again = () => layoutPages();
+    document.fonts.addEventListener('loadingdone', again);
+    return () => { live = false; document.fonts.removeEventListener('loadingdone', again); };
+  }, []);
 
   /* ---------- applying a change ---------- */
   function emit(next: Block[], opts?: { version?: boolean }) {
@@ -420,14 +436,20 @@ export function DocEditor({ body, meta, onChange, onMeta, readOnly = false, tail
       {!readOnly && <FormatBar style={meta.style ?? {}} target={tailorMode ? null : barTarget} wrap={m => mark(m as '**' | '*')} link={link} setType={setType} divider={divider}
         undo={hist.current.past.length ? undo : undefined} redo={hist.current.future.length ? redo : undefined}
         setStyle={onMeta && (st => onMeta({ style: st }))} />}
-      <div ref={paper} className={'paper' + (readOnly ? '' : ' editable') + (tailorMode ? ' tailoring' : '')} style={{ width: 794 }} onClick={onClick}>
-        <div ref={host} className="page-host" dangerouslySetInnerHTML={{ __html: html }}
+      <div ref={paper} className={'paper paged-view' + (readOnly ? '' : ' editable') + (tailorMode ? ' tailoring' : '')} style={{ width: 794, height: pages * PITCH - GAP }} onClick={onClick}>
+        {Array.from({ length: pages }, (_, k) => <div key={k} className="page-card" style={{ top: k * PITCH, height: PAGE_H }} />)}
+        <div ref={host} style={{ paddingTop: MARGIN }} className="page-host" dangerouslySetInnerHTML={{ __html: html }}
           contentEditable={editable} suppressContentEditableWarning spellCheck={editable}
           onKeyDown={editable ? onKeyDown : undefined} onCopy={editable ? e => onCopy(e) : undefined} onCut={editable ? e => onCopy(e, true) : undefined}
           onPaste={editable ? onPaste : undefined} onDragStart={e => editable && e.preventDefault()} onDrop={e => editable && e.preventDefault()}
           onCompositionStart={() => { composing.current = true; }} onCompositionEnd={editable ? onCompositionEnd : undefined} />
-        {Array.from({ length: pages - 1 }, (_, k) => (
-          <div key={k} className="pbreak" style={{ top: (k + 1) * PAGE_H }}><span>page {k + 2}</span></div>
+        {/* the page margins and the gap between pages, over anything (a coloured column) that runs through them */}
+        {Array.from({ length: pages }, (_, k) => (
+          <div key={k}>
+            {k > 0 && <div className="page-mask" style={{ top: k * PITCH - GAP, height: GAP }} />}
+            <div className="page-margin" style={{ top: k * PITCH, height: MARGIN }} />
+            <div className="page-margin" style={{ top: k * PITCH + MARGIN + CONTENT, height: MARGIN }}><span>{pages > 1 ? `${k + 1} / ${pages}` : ''}</span></div>
+          </div>
         ))}
         {hr && editable && (
           <div className="blk-tools" style={{ top: hr.top - 30, right: 40 }} onMouseDown={e => e.preventDefault()} onClick={e => e.stopPropagation()}>
@@ -467,7 +489,6 @@ export function DocEditor({ body, meta, onChange, onMeta, readOnly = false, tail
   );
 }
 
-export const pageCount = (h: number) => Math.max(1, Math.ceil(h / PAGE_H));
 
 /** the type all selected lines share, or null when they differ */
 const rangeKind = (bs: { type: string }[]): LineType | null => { const t = new Set(bs.filter(b => b.type !== 'hr').map(b => b.type)); return t.size === 1 ? [...t][0] as LineType : null; };

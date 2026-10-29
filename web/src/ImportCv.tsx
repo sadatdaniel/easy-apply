@@ -1,7 +1,6 @@
 import { useMemo, useState } from 'react';
 import { parseBlocks } from '@shared/blocks';
 import { importDocxHtml, type Imported } from '@shared/docx';
-import { findLetterDetails, generalizeLetter, LETTER_FIELDS, type LetterDetails } from '@shared/letter';
 import { pdfItems, pdfToHtml } from '@shared/pdftext';
 import { renderDoc, THEMES } from '@shared/render';
 import type { DocKind, DocMeta, TemplateInfo } from '@shared/types';
@@ -93,13 +92,9 @@ function PartReview({ fileName, label, imported, added, onCreated, onCancel }: {
   const [kind, setKind] = useState<DocKind>(imported.kind);
   const [lang, setLang] = useState(imported.lang);
   const [theme, setTheme] = useState('classic');
-  // a letter written for one job: its company, role, date and place become placeholders for every next job
-  const [reuse, setReuse] = useState(true);
-  const [details, setDetails] = useState<LetterDetails>(() => findLetterDetails(imported.markdown));
   const run = useAction();
 
-  const letter = useMemo(() => (kind === 'cover' && reuse ? generalizeLetter(imported.markdown, details) : null), [kind, reuse, details]);
-  const finalMd = letter?.markdown ?? imported.markdown;
+  const finalMd = imported.markdown;
   const blocks = useMemo(() => parseBlocks(finalMd), [finalMd]);
   const html = useMemo(() => renderDoc(blocks, theme, kind, lang), [blocks, theme, kind, lang]);
   const count = (t: string) => blocks.filter(b => b.type === t).length;
@@ -126,14 +121,6 @@ function PartReview({ fileName, label, imported, added, onCreated, onCancel }: {
         </div>
         <label className="f">Design<select className="input" value={theme} onChange={e => setTheme(e.target.value)}>
           {Object.entries(THEMES).map(([k, t]) => <option key={k} value={k}>{t.name}</option>)}</select></label>
-        {kind === 'cover' && <div className="reuse">
-          <label className="check" style={{ padding: 0, border: 0 }}><input type="checkbox" checked={reuse} onChange={e => setReuse(e.target.checked)} />
-            <span><b>Reuse for other jobs</b><small>These were written for one job. They become placeholders that every new application fills in; check what was found.</small></span></label>
-          {reuse && LETTER_FIELDS.map(f => (
-            <label key={f.key} className="f reuse-row"><span>{f.label} → <code>{f.placeholder}</code>{letter && details[f.key] ? <em> · {letter.counts[f.key]}×</em> : null}</span>
-              <input className="input" value={details[f.key]} placeholder="not found" onChange={e => setDetails(d => ({ ...d, [f.key]: e.target.value }))} /></label>
-          ))}
-        </div>}
         <div className="setup-actions" style={{ marginTop: 6 }}>
           <button className="btn" onClick={onCancel}>Cancel</button><span className="sp" />
           {added ? <span className="badge ok">✓ Added to My documents</span> : <button className="btn pri" onClick={create}>Add to My documents</button>}

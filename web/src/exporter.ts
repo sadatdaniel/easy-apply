@@ -2,6 +2,7 @@ import { parseBlocks } from '@shared/blocks';
 import { renderDoc } from '@shared/render';
 import { api, HELPER, type Doc } from './api';
 import themesCss from './themes.css?raw';
+import { pagedHtml } from './paginate';
 
 /*
   Final bucket → one merged PDF, or a zip of separate files, in the bucket's order.
@@ -54,7 +55,8 @@ const blobToDataUrl = (b: Blob) => new Promise<string>((res, rej) => { const f =
 
 /** a complete, self-contained HTML page for one document */
 export async function docHtml(d: Doc): Promise<string> {
-  const page = renderDoc(parseBlocks(d.body), d.meta.theme, d.meta.kind, d.meta.lang, d.meta.style);
+  // broken into pages where the editor shows the breaks
+  const page = await pagedHtml(renderDoc(parseBlocks(d.body), d.meta.theme, d.meta.kind, d.meta.lang, d.meta.style));
   const esc = (s: string) => s.replace(/[<&]/g, c => (c === '<' ? '&lt;' : '&amp;'));
   return `<!doctype html><html lang="${esc(d.meta.lang)}"><head><meta charset="utf-8"><title>${esc(d.meta.title)}</title><style>
 ${await fontFaces(d.meta.theme)}

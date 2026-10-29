@@ -5,6 +5,7 @@ import type { AppState, ExtractedFields, Job, JobFields } from '@shared/types';
 import { api, type Doc, type JobDetail } from './api';
 import { DocumentsStep } from './Documents';
 import { buildBundle, bundleZip, download, pdfReady, safe, type Bundle } from './exporter';
+import { useSortable } from './sortable';
 import { DownloadIcon, Dot, Keywords, STATUS, StatusMenu, useAction, useToast } from './ui';
 
 export const STEPS = ['Posting & details', 'Documents', 'Send'];
@@ -220,7 +221,6 @@ function SendStep({ job, docs, state, reload, back }: { job: Job; docs: Doc[]; s
   const [err, setErr] = useState('');
   const [previewUrl, setPreviewUrl] = useState('');
   const [showPreview, setShowPreview] = useState(false);
-  const dragged = useRef<string | null>(null);
   const run = useAction();
   useEffect(() => setOrder(job.bucket), [job.bucket.join('|')]);
   useEffect(() => { pdfReady().then(setHelper); }, []);
@@ -228,6 +228,7 @@ function SendStep({ job, docs, state, reload, back }: { job: Job; docs: Doc[]; s
   const off = all.filter(n => !order.includes(n));
   const save = async (o: string[]) => { setOrder(o); await run(() => api.setBucket(job.id, o)); await reload(); };
   const move = (i: number, d: number) => { const o = [...order]; [o[i], o[i + d]] = [o[i + d], o[i]]; save(o); };
+  const sort = useSortable(order, 'y', save);
   const docOf = (n: string) => docs.find(d => d.name === n);
   const printable = order.filter(n => n.endsWith('.md'));
   const author = nameIn(docs.filter(d => order.includes(d.name)));
@@ -275,18 +276,9 @@ function SendStep({ job, docs, state, reload, back }: { job: Job; docs: Doc[]; s
     <>
       <div className="ph"><div className="step">Step 3 of 3</div><h2>Send</h2><p>Drag or use the arrows to set the order. The merged PDF, the zip and the preview all follow it. Each file can also be downloaded on its own.</p></div>
       <div className="pb bk">
-        <div onDragOver={e => e.preventDefault()}>
+        <div className={sort.dragging ? 'sorting-list' : ''}>
           {order.map((n, i) => (
-            <div key={n} className="bi" draggable
-              onDragStart={e => { dragged.current = n; e.currentTarget.classList.add('dragging'); }}
-              onDragEnd={e => { e.currentTarget.classList.remove('dragging'); }}
-              onDragOver={e => {
-                e.preventDefault();
-                const d = dragged.current; if (!d || d === n) return;
-                const o = order.filter(x => x !== d); o.splice(o.indexOf(n) + (e.nativeEvent.offsetY > e.currentTarget.offsetHeight / 2 ? 1 : 0), 0, d);
-                setOrder(o);
-              }}
-              onDrop={() => { dragged.current = null; save(order); }}>
+            <div key={n} className="bi" {...sort.item(n)}>
               <span className="h">⋮⋮</span><span className="n">{i + 1}</span>
               <span className="tx"><b>{docOf(n)?.meta.title ?? n}</b><br /><small>{n}{n.endsWith('.md') ? ` → PDF · ${THEMES[docOf(n)?.meta.theme ?? '']?.name ?? ''}` : ''}
                 {bundle && (() => { const it = bundle.items.find(x => x.name === n); return it ? (it.note ? <span className="warn-t"> · not merged</span> : ` · ${it.pages} page${it.pages === 1 ? '' : 's'}`) : null; })()}</small></span>

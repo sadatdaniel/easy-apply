@@ -98,7 +98,7 @@ function applyStyle(html: string, s: DocStyle): string {
 
 function renderCV(blocks: Block[], theme: string, layout: string, lang: string): string {
   // header: everything before the first ## heading
-  let i = 0, name = '', tagline = '', contact = '';
+  let i = 0, name = '', tagline = '', contact = '', rule = '';
   const summary: string[] = [];
   for (; i < blocks.length && blocks[i].type !== 'h2'; i++) {
     const b = blocks[i];
@@ -112,6 +112,8 @@ function renderCV(blocks: Block[], theme: string, layout: string, lang: string):
       if (summary.length && summary[summary.length - 1].startsWith('<ul')) summary[summary.length - 1] = summary[summary.length - 1].replace(/<\/ul>$/, li + '</ul>');
       else summary.push(`<ul class="summary">${li}</ul>`);
     }
+    // a divider right under the name and contact line is the header's own line (the design draws it in its style)
+    else if (b.type === 'hr' && !summary.length && !rule) rule = `<hr class="lh-rule"${at(i)}>`;
     else if (b.type === 'hr') summary.push(`<hr${at(i)}>`);
     else summary.push(`<p class="summary"${at(i)}>${inline(b.text)}</p>`);
   }
@@ -121,10 +123,10 @@ function renderCV(blocks: Block[], theme: string, layout: string, lang: string):
     const side = sections.filter(s => SIDE_SECTIONS.test(s.title));
     const main = sections.filter(s => !SIDE_SECTIONS.test(s.title));
     const profile = summary.length ? `<section><h2>${lang.startsWith('de') ? 'Profil' : 'Profile'}</h2>${summary.join('')}</section>` : '';
-    return `<div class="sheet t-${theme}"><div class="side">${name}${tagline}${contact}${side.map(sectionHtml).join('')}</div>`
+    return `<div class="sheet t-${theme}"><div class="side">${name}${tagline}${contact}${rule}${side.map(sectionHtml).join('')}</div>`
       + `<div class="main">${profile}${main.map(sectionHtml).join('')}</div></div>`;
   }
-  return `<div class="sheet t-${theme}"><header>${name}${tagline}${contact}</header>${summary.join('')}${sections.map(sectionHtml).join('')}</div>`;
+  return `<div class="sheet t-${theme}"><header>${name}${tagline}${contact}${rule}</header>${summary.join('')}${sections.map(sectionHtml).join('')}</div>`;
 }
 
 function renderLetter(blocks: Block[], theme: string, layout: string): string {

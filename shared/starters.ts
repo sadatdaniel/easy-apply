@@ -1,7 +1,6 @@
 import type { DocMeta } from './types';
 
-// Starter layouts offered during onboarding, for people without a CV file. Example text you replace once;
-// letters keep the job's placeholders ({{company}} …), which every application fills in.
+// Starter layouts offered during onboarding, for people without a CV file: example text you replace once.
 export interface Starter { id: string; meta: DocMeta; body: string; note: string }
 
 const CV_EN = `# Your Name
@@ -9,6 +8,8 @@ const CV_EN = `# Your Name
 Your headline, e.g. Data Analyst
 
 +49 170 000 0000 | you@example.com | yourwebsite.com | City
+
+---
 
 Two or three sentences about who you are, what you are good at and what you are looking for.
 
@@ -48,6 +49,8 @@ Your headline, e.g. Data Analyst
 
 +49 170 000 0000 | you@example.com | yourwebsite.com | City
 
+---
+
 Zwei, drei Sätze dazu, wer Sie sind, was Sie gut können und was Sie suchen.
 
 ## Kenntnisse
@@ -81,22 +84,22 @@ City
 
 ---
 
-{{today}}
+Date
 
-{{company}}
-{{job_location}}
+Company name
+City
 
-**Application for {{job_title}}**
+**Application for Job title**
 
 Dear Hiring Team,
 
-Opening: why this role at {{company}} caught your attention, in one or two sentences.
+Opening: why this role at this company caught your attention, in one or two sentences.
 
 Your strongest match: one concrete experience that shows you can do what the role asks.
 
 A second strength or result, ideally with a number.
 
-Why {{company}}: something specific about the company, product or team.
+Why this company: something specific about the company, product or team.
 
 I would welcome the chance to talk about how I can contribute. Thank you for your time.
 
@@ -111,22 +114,22 @@ City
 
 ---
 
-{{today}}
+Datum
 
-{{company}}
-{{job_location}}
+Firmenname
+Ort
 
-**Bewerbung als {{job_title}}**
+**Bewerbung als Stellentitel**
 
 Sehr geehrte Damen und Herren,
 
-Einstieg: warum diese Stelle bei {{company}} Sie anspricht, in ein, zwei Sätzen.
+Einstieg: warum diese Stelle Sie anspricht, in ein, zwei Sätzen.
 
 Ihre stärkste Übereinstimmung: eine konkrete Erfahrung, die zeigt, dass Sie die Aufgaben erfüllen können.
 
 Eine zweite Stärke oder ein Ergebnis, am besten mit Zahl.
 
-Warum {{company}}: etwas Konkretes über das Unternehmen, Produkt oder Team.
+Warum dieses Unternehmen: etwas Konkretes über das Unternehmen, Produkt oder Team.
 
 Über eine Einladung zu einem persönlichen Gespräch freue ich mich.
 
@@ -136,7 +139,7 @@ Your Name
 
 export const STARTERS: Starter[] = [
   { id: 'cv-en', meta: { title: 'CV · English', kind: 'cv', lang: 'en', theme: 'classic' }, body: CV_EN, note: 'One page, reverse-chronological.' },
-  { id: 'cover-en', meta: { title: 'Cover letter · English', kind: 'cover', lang: 'en', theme: 'classic' }, body: COVER_EN, note: 'Fills in company, role and date for each job.' },
+  { id: 'cover-en', meta: { title: 'Cover letter · English', kind: 'cover', lang: 'en', theme: 'classic' }, body: COVER_EN, note: 'A short letter to adapt for each job.' },
   { id: 'cv-de', meta: { title: 'Lebenslauf · Deutsch', kind: 'cv', lang: 'de', theme: 'classic' }, body: CV_DE, note: 'German CV layout.' },
   { id: 'cover-de', meta: { title: 'Anschreiben · Deutsch', kind: 'cover', lang: 'de', theme: 'classic' }, body: COVER_DE, note: 'German cover letter.' },
 ];
