@@ -28,7 +28,7 @@ export interface Job {
   extras: string[];      // attached files (PDFs) in the job folder
   bucket: string[];      // ordered selection for export (subset of docs + extras)
   exportName: string;
-  /** where each document was copied from: a My documents id, or "example:<id>" (for "recently used") */
+  /** where each document was copied from: a Documents id, or "example:<id>" (for "recently used") */
   sources?: Record<string, string>;
 }
 
@@ -37,7 +37,7 @@ export type JobFields = Pick<Job, 'title' | 'company' | 'location' | 'salary' | 
 /** Whole-document overrides on top of the theme, set from the formatting bar. Missing = the theme's own value. */
 export interface DocStyle { size?: number; lineHeight?: number; align?: 'left' | 'justify'; margins?: 'narrow' | 'wide' }
 
-/** `main`: on a CV in "My documents", marks the main CV for its language, the source of facts for every application */
+/** `main`: on a CV in "Documents", marks the main CV for its language, the source of facts for every application */
 export interface DocMeta { title: string; kind: DocKind; lang: string; theme: string; template?: string; style?: DocStyle; main?: boolean }
 
 export interface TemplateInfo extends DocMeta { id: string; updatedAt: string }

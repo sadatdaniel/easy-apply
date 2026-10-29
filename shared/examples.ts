@@ -1,8 +1,8 @@
 import type { DocMeta } from './types';
 
-// Examples that ship with the app: a complete CV and cover letter of a made-up person, Alex Example,
-// to start from when you have no file of your own (or want to see what a finished one looks like).
-// Copied into an application like any document; replace Alex's details with yours.
+// Examples that ship with the app: a complete CV and cover letter of a made-up person, Alex Example, in each
+// of the four looks the app can draw. Start from one when you have no file of your own (or like its look);
+// it is copied like any document, and you replace Alex's details with yours.
 export interface Example { id: string; meta: DocMeta; body: string; note: string }
 
 const CV = `# Alex Example
@@ -70,7 +70,15 @@ Kind regards,
 Alex Example
 `;
 
-export const EXAMPLES: Example[] = [
-  { id: 'example-cv', meta: { title: 'Example CV', kind: 'cv', lang: 'en', theme: 'classic' }, body: CV, note: 'A complete one-page CV of a made-up data engineer.' },
-  { id: 'example-letter', meta: { title: 'Example cover letter', kind: 'cover', lang: 'en', theme: 'classic' }, body: LETTER, note: 'A short, complete cover letter of a made-up data engineer.' },
+/** four looks, each a CV and a matching cover letter; the classic pair keeps its original ids */
+const LOOKS: [theme: string, name: string, note: string][] = [
+  ['classic', 'Classic', 'Clean and compact, with a slim header line.'],
+  ['sidebar', 'Two-column', 'Skills, education and languages in a coloured side column.'],
+  ['serif', 'Elegant', 'A calm serif, centred header, warm accents.'],
+  ['academic', 'Traditional', 'Times, with a grey line between sections.'],
 ];
+
+export const EXAMPLES: Example[] = LOOKS.flatMap(([theme, name, note]) => [
+  { id: theme === 'classic' ? 'example-cv' : `example-${theme}-cv`, meta: { title: `${name} CV`, kind: 'cv' as const, lang: 'en', theme }, body: CV, note: `${note} A complete one-page CV of a made-up data engineer.` },
+  { id: theme === 'classic' ? 'example-letter' : `example-${theme}-letter`, meta: { title: `${name} cover letter`, kind: 'cover' as const, lang: 'en', theme }, body: LETTER, note: `${note} The matching cover letter.` },
+]);

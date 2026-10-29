@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { parseBlocks } from '@shared/blocks';
 import { EXAMPLES } from '@shared/examples';
-import { renderDoc, THEMES } from '@shared/render';
+import { renderDoc } from '@shared/render';
 import type { AppState, DocKind, DocMeta, Job, TemplateInfo } from '@shared/types';
 import { api, type Doc } from './api';
-import { DocWorkspace, type DocStore } from './DocWorkspace';
+import { DocWorkspace, NameEdit, type DocStore } from './DocWorkspace';
 import { readCvFile } from './ImportCv';
 import { useSortable } from './sortable';
 import { ContextMenu, useAction, useToast, type MenuItem } from './ui';
@@ -12,7 +12,7 @@ import { ContextMenu, useAction, useToast, type MenuItem } from './ui';
 /*
   Step 2: the application's documents. A strip across the top holds every file in the job's folder (CV,
   cover letter, anything else), each with a small preview; pick one to edit or look at it below. Adding or
-  replacing opens a Finder-like picker: what you used last on top, then My documents, the examples and your
+  replacing opens a Finder-like picker: what you used last on top, then Documents, the examples and your
   files, with a large preview of the one you point at.
 */
 
@@ -92,7 +92,7 @@ export function DocumentsStep({ state, job, reload, active, setActive, next, bac
     if (!part) return undefined;
     const kind = want === 'any' ? part.imported.kind : want;
     const title = f.name.replace(/\.[^.]+$/, '');
-    const r = await run(() => api.importTemplate({ title, kind, lang: part.imported.lang, theme: 'classic' }, part.imported.markdown), `Added "${title}" to My documents`);
+    const r = await run(() => api.importTemplate({ title, kind, lang: part.imported.lang, theme: 'classic' }, part.imported.markdown), `Added "${title}" to Documents`);
     return (r as { id?: string } | undefined)?.id;
   }
 
@@ -123,7 +123,7 @@ export function DocumentsStep({ state, job, reload, active, setActive, next, bac
             <span className="more" role="button" aria-label="More" data-nodrag onClick={e => cardMenu(n, e)}>⋯</span>
           </button>
         ))}
-        {!has('cv') && <button className="scard slot" onClick={() => setPicker({ want: 'cv' })}><span className="plus">+</span><span className="tx"><b>Choose a CV</b><small>from My documents or an example</small></span></button>}
+        {!has('cv') && <button className="scard slot" onClick={() => setPicker({ want: 'cv' })}><span className="plus">+</span><span className="tx"><b>Choose a CV</b><small>from Documents or an example</small></span></button>}
         {!has('cover') && <button className="scard slot" onClick={() => setPicker({ want: 'cover' })}><span className="plus">+</span><span className="tx"><b>Choose a cover letter</b><small>optional</small></span></button>}
         <button className="scard slot add" onClick={() => setPicker({ want: 'any' })}><span className="plus">+</span><span className="tx"><b>Add</b><small>documents or files, or drop them here</small></span></button>
       </div>
@@ -191,7 +191,7 @@ function DocPane({ job, doc, onSaved, replace }: { job: Job; doc: Doc; onSaved: 
     print: () => window.open(`/print?job=${encodeURIComponent(job.id)}&docs=${encodeURIComponent(name)}`, '_blank'),
   };
   return <DocWorkspace doc={doc} store={store} onSaved={d => onSaved({ ...d, name })}
-    head={meta => <><b className="ed-title">{meta.title}</b><span className="muted mono" style={{ fontSize: 12 }}>{name}</span></>}
+    head={(meta, setMeta) => <><NameEdit value={meta.title} onChange={title => setMeta({ title }, false)} /><span className="muted mono" style={{ fontSize: 12 }}>{name}</span></>}
     tools={<button className="btn sm" onClick={replace}>Replace…</button>} />;
 }
 
@@ -216,7 +216,7 @@ interface Pick { src: 'template' | 'example' | 'file'; id: string }
 interface Item extends Pick { key: string; title: string; kind: DocKind | 'file'; sub: string; meta?: DocMeta; body?: string }
 type Section = 'recent' | 'mine' | 'examples' | 'files';
 
-/** what you used last, newest first: My documents ids, example ids and file names */
+/** what you used last, newest first: Documents ids, example ids and file names */
 function recent(jobs: Job[], templates: TemplateInfo[]) {
   const out: { key: string; job: Job }[] = [];
   const seen = new Set<string>();
@@ -255,7 +255,7 @@ function Picker({ state, want, replacing, inJob, onPick, onClose, importDoc }: {
   const fits = (k: DocKind | 'file') => want === 'any' || k === want;
   const items = useMemo(() => {
     const all = new Map<string, Item>();
-    for (const t of templates) all.set('template:' + t.id, { key: 'template:' + t.id, src: 'template', id: t.id, title: t.title, kind: t.kind, sub: `${KIND[t.kind]} · ${t.lang.toUpperCase()} · ${THEMES[t.theme]?.name ?? t.theme}`, meta: bodies[t.id]?.meta, body: bodies[t.id]?.body });
+    for (const t of templates) all.set('template:' + t.id, { key: 'template:' + t.id, src: 'template', id: t.id, title: t.title, kind: t.kind, sub: `${KIND[t.kind]} · ${t.lang.toUpperCase()}`, meta: bodies[t.id]?.meta, body: bodies[t.id]?.body });
     for (const e of EXAMPLES) all.set('example:' + e.id, { key: 'example:' + e.id, src: 'example', id: e.id, title: e.meta.title, kind: e.meta.kind, sub: `Example · ${KIND[e.meta.kind]}`, meta: e.meta, body: e.body });
     for (const x of extraNames) all.set('file:' + x, { key: 'file:' + x, src: 'file', id: x, title: x, kind: 'file', sub: `File · ${ext(x)}` });
     return all;
@@ -268,7 +268,7 @@ function Picker({ state, want, replacing, inJob, onPick, onClose, importDoc }: {
     files: want === 'any' ? [...items.values()].filter(i => i.src === 'file') : [],
   };
   const usedFor = (key: string) => used.find(u => u.key === key)?.job;
-  const titles: Record<Section, string> = { recent: 'Used recently', mine: 'My documents', examples: 'Examples', files: 'Files' };
+  const titles: Record<Section, string> = { recent: 'Used recently', mine: 'Documents', examples: 'Examples', files: 'Files' };
   const sections = (Object.keys(lists) as Section[]).filter(s => lists[s].length);
   const [section, setSection] = useState<Section | 'all'>('all');
   const shown = section === 'all' ? sections : [section];

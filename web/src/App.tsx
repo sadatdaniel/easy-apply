@@ -12,7 +12,7 @@ import { Settings, Tracker } from './Views';
 import { Library } from './Library';
 
 type View = 'apps' | 'templates' | 'tracker' | 'settings';
-const VIEWS: [View, string][] = [['apps', 'Applications'], ['templates', 'My documents'], ['tracker', 'Tracker'], ['settings', 'Settings']];
+const VIEWS: [View, string][] = [['apps', 'Applications'], ['templates', 'Documents'], ['tracker', 'Tracker'], ['settings', 'Settings']];
 
 /*
   The view, the picked application and its window live in the URL hash, so reloads and Back/Forward keep your

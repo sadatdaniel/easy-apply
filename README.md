@@ -15,9 +15,9 @@ Easy Apply keeps it all in order. Every application gets its own folder, holding
 - the job's details: company, role, deadline and contact;
 - that job's own copy of your CV and cover letter.
 
-**Your originals stay clean.** Your CVs and cover letters live under *My documents*. Each application starts from a copy of your main ones, so changing a letter for one company never touches the original or any other application.
+**Your originals stay clean.** Your CVs and cover letters live under *Documents*. Each application starts from a copy of your main ones, so changing a letter for one company never touches the original or any other application.
 
-![My documents: your CVs and cover letters, with the main ones marked](docs/screenshots/my-documents.png)
+![Documents: your CVs and cover letters, with the main ones marked](docs/screenshots/my-documents.png)
 
 **Every version kept.** Each change you make is saved, and earlier versions stay in the job's folder. You can always see what you sent, and go back to any version with one click.
 
@@ -44,7 +44,8 @@ Your CV is about as personal as documents get. Easy Apply treats it that way.
 - **Upload what you have.** Bring in your existing CV and cover letter as Word or PDF. Easy Apply reads them for you, and a letter written for one company becomes reusable for the next.
 - **Fill in a job from its posting.** Paste the ad or its link, and AI (if you use it) fills in the details.
 - **Tailor with care.** Click a line to get a version matched to the job, and accept or reject it word by word. AI may only use facts from your own documents, and anything new is flagged.
-- **Make it look right.** Choose from four resume designs and adjust them with the formatting bar.
+- **Start from an example.** No CV yet? Pick one of four complete examples (a CV and a matching letter) and replace the details with yours.
+- **What you see is what you send.** The editor shows real pages, and the PDF breaks them in exactly the same places.
 
 ![A tailoring suggestion: what changes, word by word](docs/screenshots/tailor.png)
 

@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { parseBlocks } from '@shared/blocks';
-import { THEMES } from '@shared/render';
 import type { AppState, ExtractedFields, Job, JobFields } from '@shared/types';
 import { api, type Doc, type JobDetail } from './api';
 import { DocumentsStep } from './Documents';
@@ -280,7 +279,7 @@ function SendStep({ job, docs, state, reload, back }: { job: Job; docs: Doc[]; s
           {order.map((n, i) => (
             <div key={n} className="bi" {...sort.item(n)}>
               <span className="h">⋮⋮</span><span className="n">{i + 1}</span>
-              <span className="tx"><b>{docOf(n)?.meta.title ?? n}</b><br /><small>{n}{n.endsWith('.md') ? ` → PDF · ${THEMES[docOf(n)?.meta.theme ?? '']?.name ?? ''}` : ''}
+              <span className="tx"><b>{docOf(n)?.meta.title ?? n}</b><br /><small>{n}{n.endsWith('.md') ? ' → PDF' : ''}
                 {bundle && (() => { const it = bundle.items.find(x => x.name === n); return it ? (it.note ? <span className="warn-t"> · not merged</span> : ` · ${it.pages} page${it.pages === 1 ? '' : 's'}`) : null; })()}</small></span>
               <button className="btn sm" disabled={i === 0} onClick={() => move(i, -1)} title="Move up" aria-label="Move up">↑</button>
               <button className="btn sm" disabled={i === order.length - 1} onClick={() => move(i, 1)} title="Move down" aria-label="Move down">↓</button>

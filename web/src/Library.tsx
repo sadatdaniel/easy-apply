@@ -1,15 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { EXAMPLES } from '@shared/examples';
-import { THEMES } from '@shared/render';
 import type { AppState, DocKind, DocMeta } from '@shared/types';
 import { api } from './api';
 import { FileThumb, MiniDoc } from './Documents';
-import { DocWorkspace } from './DocWorkspace';
+import { DocWorkspace, NameEdit } from './DocWorkspace';
 import { ImportReview, readCvFile, type CvUpload } from './ImportCv';
 import { ContextMenu, fmtDate, useAction, useToast, type MenuItem } from './ui';
 
 /*
-  My documents: one folder with your CVs, cover letters and files (certificates, references …), shown like
+  Documents: one folder with your CVs, cover letters and files (certificates, references …), shown like
   the picker in an application: sections on the left, the documents as pages, a large preview of the one you
   pick. Open one to edit it in its own window. These are your originals: an application always works on its
   own copy.
@@ -55,7 +54,7 @@ export function Library({ state, refresh }: { state: AppState; refresh: () => Pr
 
   const items = useMemo(() => {
     const out: Item[] = [];
-    for (const t of state.templates) out.push({ key: 'template:' + t.id, src: 'template', id: t.id, title: t.title, kind: t.kind, sub: `${KIND[t.kind]} · ${LANG(t.lang)} · ${THEMES[t.theme]?.name ?? t.theme}`, meta: bodies[t.id]?.meta, body: bodies[t.id]?.body });
+    for (const t of state.templates) out.push({ key: 'template:' + t.id, src: 'template', id: t.id, title: t.title, kind: t.kind, sub: `${KIND[t.kind]} · ${LANG(t.lang)}`, meta: bodies[t.id]?.meta, body: bodies[t.id]?.body });
     for (const x of state.extras) out.push({ key: 'file:' + x.name, src: 'file', id: x.name, title: x.name, kind: 'file', sub: `${ext(x.name)} · ${(x.size / 1024).toFixed(0)} KB · ${fmtDate(x.updatedAt)}` });
     for (const e of EXAMPLES) out.push({ key: 'example:' + e.id, src: 'example', id: e.id, title: e.meta.title, kind: e.meta.kind, sub: `Example · ${KIND[e.meta.kind]}`, meta: e.meta, body: e.body });
     return out;
@@ -83,7 +82,7 @@ export function Library({ state, refresh }: { state: AppState; refresh: () => Pr
   }
   async function fromExample(i: Item) {
     const ex = EXAMPLES.find(e => e.id === i.id)!;
-    const r = await run(() => api.importTemplate({ ...ex.meta }, ex.body), `Added "${ex.meta.title}" to My documents. Replace Alex's details with yours.`);
+    const r = await run(() => api.importTemplate({ ...ex.meta }, ex.body), `Added "${ex.meta.title}" to Documents. Replace Alex's details with yours.`);
     if (r) await created(r.id, true);
   }
   const remove = (i: Item): MenuItem => ({
@@ -94,7 +93,7 @@ export function Library({ state, refresh }: { state: AppState; refresh: () => Pr
     },
   });
   const actions = (i: Item): MenuItem[] => i.src === 'example'
-    ? [{ label: 'Add to My documents', onClick: () => fromExample(i) }]
+    ? [{ label: 'Add to Documents', onClick: () => fromExample(i) }]
     : i.src === 'file'
       ? [{ label: 'Open in a new tab', onClick: () => run(() => api.openExtra(i.id)) }, remove(i)]
       : [{ label: 'Edit', onClick: () => setEditing(i.id) }, { label: 'Duplicate', onClick: () => duplicate(i) }, remove(i)];
@@ -142,7 +141,7 @@ export function Library({ state, refresh }: { state: AppState; refresh: () => Pr
 
       <div className="pk-grid">
         <div className="lib-h">
-          <div><h2>My documents</h2><p className="muted">Your originals. An application always gets its own copy, so changes here never touch what you already sent.</p></div>
+          <div><h2>Documents</h2><p className="muted">Your originals. An application always gets its own copy, so changes here never touch what you already sent.</p></div>
           <div className="lib-btns">
             <button className="btn sm" onClick={() => newDoc('cv')}>+ New CV</button>
             <button className="btn sm" onClick={() => newDoc('cover')}>+ New cover letter</button>
@@ -160,7 +159,7 @@ export function Library({ state, refresh }: { state: AppState; refresh: () => Pr
                 {lists[s].map(i => (
                   <button key={i.key} className={'pk-card' + (focus === i.key ? ' on' : '')} onClick={() => setFocus(i.key)} onDoubleClick={() => open(i)}
                     onContextMenu={e => { e.preventDefault(); setFocus(i.key); setMenu({ x: e.clientX, y: e.clientY, items: actions(i) }); }}
-                    title={i.src === 'template' ? 'Double-click to edit · right-click for more' : i.src === 'example' ? 'Double-click to add it to My documents' : 'Double-click to open'}>
+                    title={i.src === 'template' ? 'Double-click to edit · right-click for more' : i.src === 'example' ? 'Double-click to add it to Documents' : 'Double-click to open'}>
                     <span className="th">{i.src === 'file' ? <FileThumb name={i.id} library /> : i.meta && i.body !== undefined ? <MiniDoc doc={{ meta: i.meta, body: i.body }} /> : null}</span>
                     <span className="tx"><b>{i.title}</b><small>{i.src === 'template' ? `${LANG(i.meta?.lang ?? '')}${usedText(i.key)}` : i.sub}</small></span>
                   </button>
@@ -180,7 +179,7 @@ export function Library({ state, refresh }: { state: AppState; refresh: () => Pr
             {focused.src === 'example' && <small className="muted">{EXAMPLES.find(e => e.id === focused.id)?.note}</small>}
             <div className="lib-acts">
               {focused.src === 'template' && <><button className="btn pri" onClick={() => setEditing(focused.id)}>Edit</button><button className="btn" onClick={() => duplicate(focused)}>Duplicate</button></>}
-              {focused.src === 'example' && <button className="btn pri" onClick={() => fromExample(focused)}>Add to My documents</button>}
+              {focused.src === 'example' && <button className="btn pri" onClick={() => fromExample(focused)}>Add to Documents</button>}
               {focused.src === 'file' && <button className="btn" onClick={() => run(() => api.openExtra(focused.id))}>Open in a new tab</button>}
               {focused.src !== 'example' && <button className="btn" onClick={e => { const r = e.currentTarget.getBoundingClientRect(); const d = remove(focused); setMenu({ x: r.left, y: r.bottom + 6, items: [d], ask: d }); }}>Delete…</button>}
             </div>
@@ -205,7 +204,7 @@ function DocWindow({ id, onClose, remove }: { id: string; onClose: () => void; r
       <div className="flow" role="dialog" aria-label={doc?.meta.title ?? 'Document'}>
         <div className="flow-h">
           <span className="doc-ic" />
-          <b className="flow-t">{doc?.meta.title ?? '…'}</b><span className="muted" style={{ fontSize: 12.5 }}>My documents · your original</span>
+          <span className="muted" style={{ fontSize: 13 }}>Documents › <b style={{ color: 'var(--ink)' }}>your original</b></span>
           <span className="sp" />
           <button className="flow-b" title="Close (everything is saved)" aria-label="Close" onClick={onClose}>✕</button>
         </div>
@@ -215,13 +214,7 @@ function DocWindow({ id, onClose, remove }: { id: string; onClose: () => void; r
               try { const r = await api.saveTemplate(id, meta, body); return { meta: r.meta, body: r.body }; }
               catch (e) { if ((e as { statusCode?: number }).statusCode === 404) return { meta, body }; throw e; } // deleted meanwhile
             } }}
-            head={(meta, setMeta) => <>
-              <input className="input" style={{ width: 220 }} value={meta.title} onChange={e => setMeta({ title: e.target.value }, false)} aria-label="Title" />
-              <select className="input" style={{ width: 'auto' }} value={meta.kind} onChange={e => setMeta({ kind: e.target.value as DocMeta['kind'] })} aria-label="Kind">
-                <option value="cv">CV</option><option value="cover">Cover letter</option><option value="other">Other</option></select>
-              <select className="input" style={{ width: 'auto' }} value={meta.lang} onChange={e => setMeta({ lang: e.target.value })} aria-label="Language">
-                <option value="en">English</option><option value="de">Deutsch</option><option value="other">Other</option></select>
-            </>}
+            head={(meta, setMeta) => <NameEdit value={meta.title} onChange={title => setMeta({ title }, false)} />}
             tools={<button className="btn sm" onClick={() => remove(id)}>Delete…</button>}
             margin={<div className="note" style={{ fontSize: 12.5 }}>This is your original. Applications get their own copy, so a change here shows up in applications you start from now on, not in ones you already sent.</div>} />}
         </div>

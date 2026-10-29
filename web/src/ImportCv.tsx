@@ -48,7 +48,7 @@ export async function readCvFile(file: File): Promise<CvUpload> {
 }
 
 /**
-  Review what was read from an uploaded file before adding it to My documents. A PDF with several documents
+  Review what was read from an uploaded file before adding it to Documents. A PDF with several documents
   is reviewed part by part. A CV becomes the main CV of its language if that language has none yet.
 */
 export function ImportReview({ upload, templates, onDone, onCancel }: {
@@ -101,7 +101,7 @@ function PartReview({ fileName, label, imported, added, onCreated, onCancel }: {
 
   async function create() {
     const meta: DocMeta = { title: title.trim() || 'My document', kind, lang, theme };
-    const r = await run(() => api.importTemplate(meta, finalMd), `Added "${meta.title}" to My documents`);
+    const r = await run(() => api.importTemplate(meta, finalMd), `Added "${meta.title}" to Documents`);
     if (r) onCreated(r.id, meta);
   }
 
@@ -119,11 +119,11 @@ function PartReview({ fileName, label, imported, added, onCreated, onCancel }: {
           <label className="f">Language<select className="input" value={lang} onChange={e => setLang(e.target.value)}>
             <option value="en">English</option><option value="de">Deutsch</option><option value="other">Other</option></select></label>
         </div>
-        <label className="f">Design<select className="input" value={theme} onChange={e => setTheme(e.target.value)}>
+        <label className="f">Look (the closest to your original)<select className="input" value={theme} onChange={e => setTheme(e.target.value)}>
           {Object.entries(THEMES).map(([k, t]) => <option key={k} value={k}>{t.name}</option>)}</select></label>
         <div className="setup-actions" style={{ marginTop: 6 }}>
           <button className="btn" onClick={onCancel}>Cancel</button><span className="sp" />
-          {added ? <span className="badge ok">✓ Added to My documents</span> : <button className="btn pri" onClick={create}>Add to My documents</button>}
+          {added ? <span className="badge ok">✓ Added to Documents</span> : <button className="btn pri" onClick={create}>Add to Documents</button>}
         </div>
       </div>
       <div className="import-preview"><div className="paper" style={{ width: 794 }} dangerouslySetInnerHTML={{ __html: html }} /></div>

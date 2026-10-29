@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { keywordMatch, THEMES } from '@shared/render';
+import { keywordMatch } from '@shared/render';
 import type { DocMeta, DocStyle, VersionInfo } from '@shared/types';
 import { DocEditor, type Tailor } from './DocEditor';
 import { fmtDateTime, useAction, useUnsavedWarning } from './ui';
 
 /**
   Where a document lives: an application's copy (with versions and tailoring) or one of your originals in
-  My documents. The workspace only edits through this, so it works the same for both.
+  Documents. The workspace only edits through this, so it works the same for both.
 */
 export interface DocStore {
   save: (body: string, meta: DocMeta, version?: boolean) => Promise<{ meta: DocMeta; body: string }>;
@@ -141,7 +141,13 @@ export function DocWorkspace({ doc: initial, store, head, tools, onSaved, margin
 
 const SIZES = [85, 90, 95, 100, 105, 110, 115, 120];
 
-/** the whole document's look: its design, and the settings that adjust it for every page */
+/** a document's name, edited where it stands (it saves like the text does) */
+export function NameEdit({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  return <input className="name-edit" value={value} onChange={e => onChange(e.target.value)} aria-label="Name" title="Click to rename"
+    size={Math.max(8, value.length + 1)} onKeyDown={e => { if (e.key === 'Enter' || e.key === 'Escape') (e.target as HTMLInputElement).blur(); }} />;
+}
+
+/** settings that adjust the document's look, for every page (the look itself comes with the document) */
 function DocumentSettings({ meta, set }: { meta: DocMeta; set: (patch: Partial<DocMeta>) => void }) {
   const style = meta.style ?? {};
   const size = style.size ?? 100;
@@ -161,20 +167,16 @@ function DocumentSettings({ meta, set }: { meta: DocMeta; set: (patch: Partial<D
     <div className="ins-sec">
       <h4>Document</h4>
       <p className="ins-note">For every page of this document.</p>
-      <label className="ins-row"><span>Design</span>
-        <select className="input" value={meta.theme} onChange={e => set({ theme: e.target.value })}>
-          {Object.entries(THEMES).map(([k, t]) => <option key={k} value={k}>{t.name}</option>)}
-        </select></label>
       <div className="ins-row"><span>Text size</span>
         <div className="seg-ctl stepper">
           <button onClick={() => step(-1)} disabled={size <= SIZES[0]} title="Smaller" aria-label="Smaller text">A−</button>
           <span>{size}%</span>
           <button onClick={() => step(1)} disabled={size >= SIZES[SIZES.length - 1]} title="Bigger" aria-label="Bigger text">A+</button>
         </div></div>
-      <div className="ins-col"><span>Line spacing</span>{seg(style.lineHeight, [[undefined, 'Design'], [1.15, 'Tight'], [1.3, 'Normal'], [1.5, 'Relaxed']], v => put({ lineHeight: v }))}</div>
-      <div className="ins-col"><span>Alignment</span>{seg(style.align, [[undefined, 'Design'], ['left', 'Left'], ['justify', 'Justify']], v => put({ align: v }))}</div>
-      <div className="ins-col"><span>Margins</span>{seg(style.margins, [[undefined, 'Design'], ['narrow', 'Narrow'], ['wide', 'Wide']], v => put({ margins: v }))}</div>
-      {Object.keys(style).length > 0 && <button className="link" style={{ fontSize: 12.5, alignSelf: 'flex-start' }} onClick={() => set({ style: {} })}>Back to the design's own settings</button>}
+      <div className="ins-col"><span>Line spacing</span>{seg(style.lineHeight, [[undefined, 'Default'], [1.15, 'Tight'], [1.3, 'Normal'], [1.5, 'Relaxed']], v => put({ lineHeight: v }))}</div>
+      <div className="ins-col"><span>Alignment</span>{seg(style.align, [[undefined, 'Default'], ['left', 'Left'], ['justify', 'Justify']], v => put({ align: v }))}</div>
+      <div className="ins-col"><span>Margins</span>{seg(style.margins, [[undefined, 'Default'], ['narrow', 'Narrow'], ['wide', 'Wide']], v => put({ margins: v }))}</div>
+      {Object.keys(style).length > 0 && <button className="link" style={{ fontSize: 12.5, alignSelf: 'flex-start' }} onClick={() => set({ style: {} })}>Back to the defaults</button>}
     </div>
   );
 }

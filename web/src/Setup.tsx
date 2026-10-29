@@ -120,13 +120,13 @@ export function Onboarding({ state, done }: { state: AppState; done: () => void 
             <span className="muted">Word (.docx) or PDF, one file each or both in one PDF. They are read in this browser; nothing is uploaded anywhere.{added.length ? ' A second language version works too.' : ''}</span>
             <button className="btn pri" onClick={() => file.current?.click()}>⬆ Choose a file…</button>
             <input ref={file} type="file" accept={CV_ACCEPT} hidden onChange={e => { pick(e.target.files?.[0]); e.target.value = ''; }} />
-            {added.length > 0 && <small className="ok-t">✓ Added to My documents: {added.join(', ')}</small>}
+            {added.length > 0 && <small className="ok-t">✓ Added to Documents: {added.join(', ')}</small>}
           </div>
           {!layouts
             ? <button className="link" style={{ marginTop: 12, fontSize: 13 }} onClick={() => setLayouts(true)}>No CV file yet? Start from a layout instead…</button>
             : <div className="setup-split" style={{ marginTop: 16 }}>
                 <div>
-                  <p className="muted" style={{ fontSize: 12.5, marginTop: 0 }}>Example layouts. Replace the example text once under My documents; then pick it for any application.</p>
+                  <p className="muted" style={{ fontSize: 12.5, marginTop: 0 }}>Example layouts. Replace the example text once under Documents; then pick it for any application.</p>
                   {STARTERS.map(s => (
                     <label key={s.id} className="check">
                       <input type="checkbox" checked={picked.includes(s.id)} onChange={e => setPicked(p => e.target.checked ? [...p, s.id] : p.filter(x => x !== s.id))} />
