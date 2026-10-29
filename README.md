@@ -33,15 +33,13 @@ Easy Apply keeps it all in order. Think in folders and files: every application 
 
 **Export it the same way every time.** Drag the documents for a job into order (letter, CV, certificates, references), preview them, and download one PDF, a zip, or each file on its own. You get the same clean result for every application, named the way you chose.
 
-![Export: the order, one PDF or a zip, and a preview of exactly what goes out](docs/screenshots/export.png)
-
 ## Privacy first
 
 Your CV is about as personal as documents get. Easy Apply treats it that way.
 
 - **Your files stay with you.** Everything is stored as ordinary files in a folder you choose, or inside your browser, on your own computer. There's no account, no cloud and no server holding your data.
-- **Nothing calls home.** No analytics, no tracking, no telemetry. Easy Apply only goes online when you ask it to: to fetch a job posting from a link, or to use the AI provider you chose.
-- **You decide about AI.** It's entirely optional; the app works fully without it. If you want it, run a free model on your own computer (Ollama, LM Studio), so nothing leaves your machine. Or use your own key for OpenRouter, OpenAI or Gemini, and the app tells you when text goes to a cloud service.
+- **Nothing calls home.** No analytics, no tracking, no telemetry. Easy Apply only goes online when you ask it to: to fetch a job posting from a link (only the link is sent, never your documents), or to use the AI provider you chose.
+- **You decide about AI.** It's entirely optional; the app works fully without it. If you want it, run a model on your own computer, so nothing leaves your machine. Or use your own key for OpenRouter, OpenAI or Gemini, and the app tells you when text goes to a cloud service.
 - **Your keys stay in your browser.** They're never written into your documents folder, and they're only sent to the provider they belong to.
 - **Works offline.** Once opened, Easy Apply runs without an internet connection, and a full backup is one click.
 
@@ -53,7 +51,24 @@ Your CV is about as personal as documents get. Easy Apply treats it that way.
 
 ![A tailoring suggestion: what changes, word by word](docs/screenshots/tailor.png)
 
+## Local AI first
+
+I believe AI that runs on your own computer is the future, so local models are first-class in Easy Apply, not an afterthought. Your CV never has to leave your machine to get help with it. The prompts are written and tested for small local models; Easy Apply is tested with Gemma 4 (`e2b-text-128k`) running in [Ollama](https://ollama.com).
+
+**Set up Ollama:**
+
+1. Install Ollama from [ollama.com](https://ollama.com) and download a model, for example: `ollama pull gemma4:e2b`
+2. Let the Easy Apply website talk to it. Ollama only answers pages it trusts, so add Easy Apply's address once:
+   - **Windows:** Settings › System › About › Advanced system settings › Environment Variables › New user variable: name `OLLAMA_ORIGINS`, value `https://easy-apply.pages.dev`. Then quit Ollama from the system tray and start it again.
+   - **macOS:** in Terminal, `launchctl setenv OLLAMA_ORIGINS "https://easy-apply.pages.dev"`, then quit and reopen Ollama.
+   - **Linux:** `sudo systemctl edit ollama.service`, add `Environment="OLLAMA_ORIGINS=https://easy-apply.pages.dev"` under `[Service]`, then `sudo systemctl restart ollama`.
+3. In Easy Apply, open Settings › AI providers, add **Ollama (local)** and pick your model. Chrome or Edge may ask once whether the site may connect to devices on your local network; allow it, since that is how it reaches Ollama on your computer.
+
+LM Studio works the same way: turn on CORS in its server settings.
+
 ## Good to know
+
+- **Chrome or Edge.** Easy Apply is built and tested for them. Firefox and Safari don't let a website open a folder on your computer, and there's nothing a website can do about that: in those browsers your files can only live inside the browser.
 
 - Word files keep their look best. A PDF keeps its fonts and sizes, but not its colours.
 - Photos and other images inside a CV are left out; the text comes through.
@@ -61,14 +76,16 @@ Your CV is about as personal as documents get. Easy Apply treats it that way.
 
 ## Get started
 
-You need [Node.js](https://nodejs.org) (version 20 or newer) and Chrome or Edge.
+Open **[easy-apply.pages.dev](https://easy-apply.pages.dev)** in Chrome or Edge. Nothing to install: choose where to keep your files, upload your CV and cover letter, and Easy Apply guides you through the rest. After the first visit it also works offline, and you can install it as an app from the address bar.
+
+**Run it yourself:** you need [Node.js](https://nodejs.org) (version 20 or newer).
 
 ```bash
 npm install
 npm run dev
 ```
 
-Open http://localhost:5173, choose where to keep your files, and upload your CV and cover letter. Easy Apply guides you through the rest.
+Then open http://localhost:5173.
 
 Want to know how it works inside? See the [technical notes](docs/TECHNICAL.md).
 

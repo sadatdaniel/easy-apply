@@ -27,6 +27,6 @@ applyAppearance(loadAppearance());
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <ToastProvider>{location.pathname === '/print' ? <PrintView /> : <App />}</ToastProvider>
+    <ToastProvider>{new URLSearchParams(location.search).has('print') ? <PrintView /> : <App />}</ToastProvider>
   </StrictMode>,
 );

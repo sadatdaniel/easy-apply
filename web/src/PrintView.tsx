@@ -5,7 +5,7 @@ import { api, type Doc } from './api';
 import { connect, unlock, type Conn } from './backend';
 import { pagedHtml } from './paginate';
 
-/** /print?job=…&docs=a.md,b.md&title=… : the documents as A4 pages, then the print dialog. */
+/** ?print&job=…&docs=a.md,b.md&title=… : the documents as A4 pages, then the print dialog. */
 export function PrintView() {
   const q = new URLSearchParams(location.search);
   const job = q.get('job') ?? '';

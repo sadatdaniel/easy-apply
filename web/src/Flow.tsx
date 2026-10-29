@@ -256,7 +256,7 @@ function SendStep({ job, docs, state, reload, back }: { job: Job; docs: Doc[]; s
   async function keepName() { if (exportName !== job.exportName) await run(() => api.updateJob(job.id, { exportName })); }
   async function printAll() {
     await keepName();
-    window.open(`/print?job=${encodeURIComponent(job.id)}&docs=${encodeURIComponent(printable.join(','))}&title=${encodeURIComponent(exportName)}`, '_blank');
+    window.open(`${import.meta.env.BASE_URL}?print&job=${encodeURIComponent(job.id)}&docs=${encodeURIComponent(printable.join(','))}&title=${encodeURIComponent(exportName)}`, '_blank');
   }
   const skipped = bundle?.items.filter(x => x.note) ?? [];
   /** one file: a document as its PDF (as in the preview), a file as it is */

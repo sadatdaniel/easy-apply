@@ -202,7 +202,7 @@ function DocPane({ job, doc, onSaved, replace }: { job: Job; doc: Doc; onSaved: 
     restore: id => api.restore(job.id, name, id),
     tailor: (body, block, instruction, avoid) => api.rewrite(job.id, name, body, block, instruction, avoid),
     keywords: job.keywords,
-    print: () => window.open(`/print?job=${encodeURIComponent(job.id)}&docs=${encodeURIComponent(name)}`, '_blank'),
+    print: () => window.open(`${import.meta.env.BASE_URL}?print&job=${encodeURIComponent(job.id)}&docs=${encodeURIComponent(name)}`, '_blank'),
   };
   return <DocWorkspace doc={doc} store={store} onSaved={d => onSaved({ ...d, name })}
     head={(meta, setMeta) => <><NameEdit value={meta.title} onChange={title => setMeta({ title }, false)} /><span className="muted mono" style={{ fontSize: 12 }}>{name}</span></>}

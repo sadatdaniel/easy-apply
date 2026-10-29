@@ -18,6 +18,10 @@ Then open http://localhost:5173. The app runs entirely in the browser. On first 
 
 `npm run dev` also starts a small local helper on port 4317. Browsers may not read other websites, so the helper is what fetches a job posting from a link; it also creates the PDFs (see Export). Without it, paste the posting text. The helper only answers pages on localhost (add a hosted copy's origin with `EASYCV_ORIGINS=https://…`) and refuses private network addresses.
 
+### Hosting (Cloudflare Pages)
+
+The public site is published by Cloudflare Pages from this repository: every push to `main` is built and published, other branches get preview addresses. Build command `npm run build -w web`, output directory `web/dist`, environment variable `NODE_VERSION=22`. `functions/api/fetch-posting.ts` runs next to it as a Pages Function: it fetches a job posting's page for the browser (only the link is sent, only the app's own pages may use it, never local or private addresses; see `shared/fetchpage.ts`). `web/public/_headers` sets response headers (no caching for the offline worker, so updates arrive). `EASYCV_BASE=/sub/path/` builds the app for a host that serves it under a sub-path.
+
 ### Install, offline, updates
 
 `npm run build` produces `web/dist`, a static site that can be hosted anywhere (e.g. GitHub Pages) or served with `npm start`. It is an installable web app: after the first visit it works offline, and when a new version is published it shows "A new version is ready – Reload" instead of switching under you.

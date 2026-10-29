@@ -16,7 +16,11 @@ const CSP = [
 const csp = { name: 'csp', apply: 'build' as const, transformIndexHtml: (html: string) => html.replace('<head>', `<head>
     <meta http-equiv="Content-Security-Policy" content="${CSP}" />`) };
 
+// where the app is served: "/" locally, "/easy-apply/" on GitHub Pages
+const BASE = process.env.EASYCV_BASE ?? '/';
+
 export default defineConfig({
+  base: BASE,
   // shown in Settings, so you can tell which version is running (and that an update arrived)
   define: { __BUILD__: JSON.stringify(new Date().toISOString().slice(0, 19).replace('T', ' ')) },
   plugins: [
@@ -30,7 +34,8 @@ export default defineConfig({
         name: 'Easy Apply',
         short_name: 'Easy Apply',
         description: 'Tailor your CV and cover letter for every job, and keep track of your applications.',
-        start_url: '/',
+        start_url: BASE,
+        scope: BASE,
         display: 'standalone',
         background_color: '#f4f5f7',
         theme_color: '#eceef1',
@@ -43,7 +48,7 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,mjs,css,html,svg,png,woff2}'],
-        navigateFallback: '/index.html', // /print and deep links work offline too
+        navigateFallback: `${BASE}index.html`, // deep links work offline too
         // control the page from the very first visit, so on-demand code (PDF export, Word import) works offline
         // even in the tab that installed the app; later updates still wait for the user's "Reload"
         clientsClaim: true,

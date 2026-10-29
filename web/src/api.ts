@@ -128,7 +128,19 @@ export const api = {
       if (!r.ok) throw new Error((data as { error?: string }).error ?? `The helper failed (${r.status})`);
       return data as FetchedPosting;
     }
-    // 2. straight from the browser: works only for the few sites that allow it
+    // 2. the hosted app's own posting fetcher (a Cloudflare Pages Function; only the link is sent)
+    try {
+      const r = await fetch(`${import.meta.env.BASE_URL}api/fetch-posting`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ url }), signal: AbortSignal.timeout(25_000) });
+      if ((r.headers.get('content-type') ?? '').includes('application/json')) {
+        const data = await r.json() as { url?: string; html?: string; error?: string };
+        if (!r.ok) throw new Error(data.error ?? `The posting fetcher failed (${r.status})`);
+        return parsePosting(data.html ?? '', data.url ?? url, h => new DOMParser().parseFromString(h, 'text/html'));
+      }
+      // no fetcher here (the app runs locally, or on a host without one): try the browser itself
+    } catch (e) {
+      if ((e as Error).name !== 'TimeoutError' && !(e instanceof TypeError)) throw e;
+    }
+    // 3. straight from the browser: works only for the few sites that allow it
     let html: string;
     try {
       const r = await fetch(url, { signal: AbortSignal.timeout(15_000) });
