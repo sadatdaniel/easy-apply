@@ -33,7 +33,8 @@
 html, body, #root { height:100%; }
 body { margin:0; font-family:var(--font); background:var(--bg); color:var(--ink); font-size:13.5px; }
 button, input, select, textarea { font:inherit; color:inherit; }
-.app { height:100%; display:flex; flex-direction:column; overflow:hidden; }
+/* a desktop app: below this size the page scrolls instead of squeezing the layout */
+.app { height:100%; min-width:1180px; min-height:700px; display:flex; flex-direction:column; overflow:hidden; position:relative; }
 .muted { color:var(--muted); }
 .serif { font-family:var(--head); font-weight:var(--head-w); }
 
@@ -413,8 +414,8 @@ table.t tr.closed td { color:var(--muted); }
 .start-empty .serif { font-size:22px; margin:0 0 6px; }
 
 /* ---------- the picker (Finder-like) ---------- */
-.pk-back { position:fixed; inset:0; z-index:50; background:rgba(15,20,30,.35); display:grid; place-items:center; padding:28px; }
-.picker { width:min(1180px, 100%); height:min(760px, 100%); background:var(--paper); border-radius:12px; box-shadow:var(--shadow-lg); display:flex; flex-direction:column; overflow:hidden; border:1px solid var(--line); }
+.pk-back { position:fixed; inset:0; z-index:50; background:rgba(15,20,30,.35); display:grid; place-items:center; padding:28px; overflow:auto; }
+.picker { width:min(1180px, 100%); height:min(760px, 100%); min-width:1040px; min-height:600px; background:var(--paper); border-radius:12px; box-shadow:var(--shadow-lg); display:flex; flex-direction:column; overflow:hidden; border:1px solid var(--line); }
 .picker.over { box-shadow:0 0 0 3px var(--accent), var(--shadow-lg); }
 .pk-h, .pk-f { display:flex; gap:8px; align-items:center; padding:12px 16px; border-bottom:1px solid var(--line); }
 .pk-f { border-bottom:0; border-top:1px solid var(--line); }
@@ -450,8 +451,8 @@ table.t tr.closed td { color:var(--muted); }
 .pk-prev small { font-size:12px; line-height:1.45; }
 
 /* ---------- an application in its own window ---------- */
-.flow-back { position:fixed; inset:0; z-index:30; background:rgba(15,20,30,.38); backdrop-filter:blur(1.5px); }
-.flow { position:fixed; z-index:31; inset:18px 22px; background:var(--paper); border-radius:12px; box-shadow:var(--shadow-lg); border:1px solid var(--line); display:flex; flex-direction:column; overflow:hidden; transition:inset .18s ease, width .18s ease, height .18s ease; }
+.flow-back { position:absolute; inset:0; z-index:30; background:rgba(15,20,30,.38); backdrop-filter:blur(1.5px); }
+.flow { position:absolute; z-index:31; inset:18px 22px; background:var(--paper); border-radius:12px; box-shadow:var(--shadow-lg); border:1px solid var(--line); display:flex; flex-direction:column; overflow:hidden; transition:inset .18s ease, width .18s ease, height .18s ease; }
 .flow-h { display:flex; align-items:center; gap:10px; padding:9px 10px 9px 16px; background:var(--side); border-bottom:1px solid var(--line); min-height:46px; box-sizing:border-box; flex-shrink:0; user-select:none; }
 .flow-t { font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:300px; }
 .flow-steps { display:flex; gap:4px; margin-left:14px; }
@@ -495,7 +496,11 @@ table.t tr.closed td { color:var(--muted); }
 .btn.tailor.on { background:var(--accent-soft); color:var(--accent-text); border-color:var(--accent); box-shadow:inset 0 0 0 1px var(--accent); }
 .scard.dragging { opacity:.45; }
 .scard.off { opacity:.6; }
-.scard[draggable="true"] { cursor:grab; }
+.strip { user-select:none; }
+.strip .scard:not(.slot) { cursor:grab; touch-action:none; }
+.strip.sorting, .strip.sorting .scard { cursor:grabbing; }
+.strip.sorting .scard:not(.dragging) { transition:transform .12s; }
+.scard.dragging { box-shadow:var(--shadow-lg); }
 
 /* ---------- My documents: a folder, like the picker ---------- */
 .library { flex:1; min-height:0; display:grid; grid-template-columns:200px minmax(0,1fr) 340px; background:var(--paper); }

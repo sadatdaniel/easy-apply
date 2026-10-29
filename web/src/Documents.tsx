@@ -29,7 +29,10 @@ export function DocumentsStep({ state, job, reload, active, setActive, next, bac
   const [menu, setMenu] = useState<{ x: number; y: number; items: MenuItem[] } | null>(null);
   const [over, setOver] = useState(false);
   const [order, setOrder] = useState<string[] | null>(null); // while a card is dragged
-  const dragged = useRef<string | null>(null);
+  const [dragging, setDragging] = useState<string | null>(null);
+  // a card follows the pointer once it has moved a few pixels; until then a press is a click
+  const press = useRef<{ name: string; x: number; y: number; moved: boolean } | null>(null);
+  const swallowClick = useRef(false);
   const run = useAction();
   const toast = useToast();
 
@@ -44,14 +47,45 @@ export function DocumentsStep({ state, job, reload, active, setActive, next, bac
   // the strip follows the send order, then anything not in it
   const saved = [...job.bucket.filter(n => job.docs.includes(n) || job.extras.includes(n)), ...[...job.docs, ...job.extras].filter(n => !job.bucket.includes(n))];
   const files = order ?? saved;
-  async function reorder() {
-    const next = order;
-    dragged.current = null;
+  async function reorder(next: string[] | null) {
     if (!next || next.join('|') === saved.join('|')) { setOrder(null); return; }
     await run(() => api.setBucket(job.id, next.filter(n => job.bucket.includes(n))));
     await reload();
     setOrder(null);
   }
+  // pointer events rather than the browser's drag and drop: it works the same everywhere, cards included
+  const live = useRef({ files, order, reorder });
+  live.current = { files, order, reorder };
+  useEffect(() => {
+    const move = (e: PointerEvent) => {
+      const p = press.current;
+      if (!p) return;
+      if (!p.moved && Math.hypot(e.clientX - p.x, e.clientY - p.y) < 6) return;
+      if (!p.moved) { p.moved = true; setDragging(p.name); }
+      const el = (document.elementFromPoint(e.clientX, e.clientY) as HTMLElement | null)?.closest<HTMLElement>('[data-card]');
+      const over = el?.dataset.card;
+      if (!el || !over || over === p.name) return;
+      const r = el.getBoundingClientRect();
+      const cur = live.current.files;
+      const next = cur.filter(x => x !== p.name);
+      next.splice(next.indexOf(over) + (e.clientX > r.left + r.width / 2 ? 1 : 0), 0, p.name);
+      if (next.join('|') !== cur.join('|')) setOrder(next);
+    };
+    const up = () => {
+      const p = press.current;
+      press.current = null;
+      if (!p?.moved) return;
+      // the click that ends a drag is not a click; it comes right after this, or not at all
+      swallowClick.current = true;
+      setTimeout(() => { swallowClick.current = false; }, 0);
+      setDragging(null);
+      live.current.reorder(live.current.order);
+    };
+    addEventListener('pointermove', move);
+    addEventListener('pointerup', up);
+    addEventListener('pointercancel', up);
+    return () => { removeEventListener('pointermove', move); removeEventListener('pointerup', up); removeEventListener('pointercancel', up); };
+  }, []);
   const kindOf = (n: string): DocKind | 'file' => (isFile(n) ? 'file' : docs[n]?.meta.kind ?? 'other');
   const has = (k: DocKind) => files.some(n => kindOf(n) === k);
   const current = active && files.includes(active) ? active : files[0] ?? null;
@@ -110,25 +144,16 @@ export function DocumentsStep({ state, job, reload, active, setActive, next, bac
 
   return (
     <>
-      <div className={'strip' + (over ? ' over' : '')}
-        onDragOver={e => { if (e.dataTransfer.types.includes('Files') && !dragged.current) { e.preventDefault(); setOver(true); } }}
+      <div className={'strip' + (over ? ' over' : '') + (dragging ? ' sorting' : '')}
+        onDragOver={e => { if (e.dataTransfer.types.includes('Files')) { e.preventDefault(); setOver(true); } }}
         onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setOver(false); }}
-        onDrop={e => { e.preventDefault(); setOver(false); if (dragged.current) reorder(); else drop(e.dataTransfer.files); }}>
+        onDrop={e => { e.preventDefault(); setOver(false); drop(e.dataTransfer.files); }}>
         {files.map(n => (
-          <button key={n} className={'scard' + (n === current ? ' on' : '') + (dragged.current === n ? ' dragging' : '') + (job.bucket.includes(n) ? '' : ' off')}
-            onClick={() => setActive(n)} onContextMenu={e => cardMenu(n, e)} title={`${n} · drag to change the order they are sent in`}
-            draggable onDragStart={e => { dragged.current = n; e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', n); setOrder(saved); }}
-            onDragOver={e => {
-              const d = dragged.current;
-              if (!d) return;
-              e.preventDefault();
-              if (d === n) return;
-              const r = e.currentTarget.getBoundingClientRect();
-              const o = files.filter(x => x !== d);
-              o.splice(o.indexOf(n) + (e.clientX > r.left + r.width / 2 ? 1 : 0), 0, d);
-              if (o.join('|') !== files.join('|')) setOrder(o);
-            }}
-            onDragEnd={() => { if (dragged.current) reorder(); }}>
+          <button key={n} data-card={n} className={'scard' + (n === current ? ' on' : '') + (dragging === n ? ' dragging' : '') + (job.bucket.includes(n) ? '' : ' off')}
+            onClick={() => { if (swallowClick.current) { swallowClick.current = false; return; } setActive(n); }}
+            onContextMenu={e => cardMenu(n, e)} title={`${n} · drag to change the order they are sent in`}
+            onPointerDown={e => { if (e.button === 0 && !(e.target as HTMLElement).closest('.more')) press.current = { name: n, x: e.clientX, y: e.clientY, moved: false }; }}
+            onDragStart={e => e.preventDefault()}>
             <span className="th">{isFile(n) ? <FileThumb job={job.id} name={n} /> : docs[n] && <MiniDoc doc={docs[n]} />}</span>
             <span className="tx"><b>{docs[n]?.meta.title ?? n}</b><small>{job.bucket.includes(n) ? `${KIND[kindOf(n)]} · ${n}` : 'left out of sending'}</small></span>
             <span className="more" role="button" aria-label="More" onClick={e => cardMenu(n, e)}>⋯</span>
