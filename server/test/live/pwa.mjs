@@ -21,7 +21,7 @@ const build = () => execSync('npm run build -w web', { cwd: ROOT, stdio: 'pipe',
 let server = null;
 async function serve() {
   server = spawn(process.execPath, [path.join(ROOT, 'node_modules/tsx/dist/cli.mjs'), 'src/index.ts'], { cwd: path.join(ROOT, 'server'), stdio: 'ignore', env: { ...process.env, EASYCV_PORT: '4174' } });
-  for (let i = 0; i < 40; i++) { try { if ((await fetch(URL0)).ok) return; } catch {} await sleep(250); }
+  for (let i = 0; i < 120; i++) { try { if ((await fetch(URL0)).ok) return; } catch {} await sleep(250); }
   throw new Error('preview server did not start');
 }
 async function stop() { if (server) { server.kill(); server = null; await sleep(800); } }
@@ -63,8 +63,6 @@ try {
   check('first visit: "works offline" notice', await waitFor(`return document.body.innerText.includes('now works offline')`, 10000));
   await run(H + `btn('OK')?.click(); btn('Inside this browser').click(); await sleep(900); btn('Continue').click(); await sleep(700);
     [...document.querySelectorAll('button')].find(b=>b.textContent.startsWith('No CV file yet')).click(); await sleep(300);
-    btn('Continue').click(); await sleep(900);
-    setVal(document.querySelector('.setup-form input'),'Robin Test'); await sleep(100);
     btn('Continue').click(); await sleep(1200); btn('Skip for now').click(); await sleep(1200);
     btn('+ New application').click(); await sleep(700);
     setVal(document.querySelector('textarea'),'Data Engineer at Hafenblick');

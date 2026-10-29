@@ -4,20 +4,26 @@
 
 After a few weeks of job hunting, the files pile up: `CV_final.docx`, `CV_final_v2_EN.docx`, `Cover_Letter_Acme_new.pdf`… Which version went to which company? Did you change the German one too? What exactly did you send the company that just invited you to an interview?
 
-Easy Apply keeps it all in order. Every application gets its own folder, holding the posting, the exact CV and letter you sent, every earlier version, and where things stand.
+Easy Apply keeps it all in order. Think in folders and files: every application gets its own folder, holding the posting, the exact CV and letter you sent, every earlier version, and where things stand.
 
-![Applications, each with its own folder of documents](docs/screenshots/applications.png)
+![An application in its own window: its files in a strip, the one you picked open for editing](docs/screenshots/applications.png)
 
 ## One place for every application
 
 **A folder per job.** When you add a job, Easy Apply creates its folder. That folder holds:
 - the posting, saved in case the ad disappears;
 - the job's details: company, role, deadline and contact;
-- that job's own copy of your CV and cover letter.
+- that job's own copies of your CV and cover letter, plus any certificates or references you add.
 
-**Your originals stay clean.** Your CVs and cover letters live under *Documents*. Each application starts from a copy of your main ones, so changing a letter for one company never touches the original or any other application.
+**One application, one window.** Each application opens in its own window, in three steps: the posting, the documents, the export. Minimise it like an email you are writing, look something up, and come back. It saves as you go and opens where you left off.
 
-![Documents: your CVs and cover letters, with the main ones marked](docs/screenshots/my-documents.png)
+**Your originals stay clean.** Your CVs, cover letters and files live under *Documents*. An application always works on its own copy, so changing a letter for one company never touches the original or any other application.
+
+![Documents: your CVs, cover letters and files, with a large preview](docs/screenshots/documents.png)
+
+**Your file keeps its look.** Upload your CV and cover letter as Word or PDF. Easy Apply keeps their own fonts, sizes, colours and spacing; it doesn't force a design on you. No CV yet? Start from one of four complete examples, each a CV with a matching letter.
+
+**Edit like in a word processor.** Click anywhere on the page and type. Select across lines, undo and redo, copy and paste between documents. The editor shows real pages, and the PDF breaks them in exactly the same places: what you see is what you send.
 
 **Every version kept.** Each change you make is saved, and earlier versions stay in the job's folder. You can always see what you sent, and go back to any version with one click.
 
@@ -25,9 +31,9 @@ Easy Apply keeps it all in order. Every application gets its own folder, holding
 
 ![The tracker](docs/screenshots/tracker.png)
 
-**Send it the same way every time.** Put the documents for a job in order (CV, letter, certificates, references), preview them, and download one PDF or a zip. You get the same clean result for every application, named the way you chose.
+**Export it the same way every time.** Drag the documents for a job into order (letter, CV, certificates, references), preview them, and download one PDF, a zip, or each file on its own. You get the same clean result for every application, named the way you chose.
 
-![Putting the documents in order, with a preview of the PDF](docs/screenshots/final-pdf.png)
+![Export: the order, one PDF or a zip, and a preview of exactly what goes out](docs/screenshots/export.png)
 
 ## Privacy first
 
@@ -41,13 +47,17 @@ Your CV is about as personal as documents get. Easy Apply treats it that way.
 
 ## Help along the way
 
-- **Upload what you have.** Bring in your existing CV and cover letter as Word or PDF. Easy Apply reads them for you, and a letter written for one company becomes reusable for the next.
 - **Fill in a job from its posting.** Paste the ad or its link, and AI (if you use it) fills in the details.
 - **Tailor with care.** Click a line to get a version matched to the job, and accept or reject it word by word. AI may only use facts from your own documents, and anything new is flagged.
-- **Start from an example.** No CV yet? Pick one of four complete examples (a CV and a matching letter) and replace the details with yours.
-- **What you see is what you send.** The editor shows real pages, and the PDF breaks them in exactly the same places.
+- **Recently used first.** Adding documents to an application shows what you used last on top, with a large preview, like a Finder window.
 
 ![A tailoring suggestion: what changes, word by word](docs/screenshots/tailor.png)
+
+## Good to know
+
+- Word files keep their look best. A PDF keeps its fonts and sizes, but not its colours.
+- Photos and other images inside a CV are left out; the text comes through.
+- Designer templates built from floating text boxes come in as text, but may need their order and headings fixed by hand.
 
 ## Get started
 

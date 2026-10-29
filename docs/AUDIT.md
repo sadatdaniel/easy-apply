@@ -6,7 +6,7 @@ This review covered security, data safety, failure modes, AI behaviour and the o
 
 | Check | Command | What it covers |
 |---|---|---|
-| Unit tests (79) | `npm test` | Store and files, rendering and injection, Markdown blocks, diff, posting parser, helper address rules, AI error handling, tailoring guards, Word import, fallback chain |
+| Unit tests (100) | `npm test` | Store and files, rendering and injection, Markdown blocks, diff, posting parser, helper address rules, AI error handling, tailoring guards, Word import and its look, page editor, fallback chain |
 | Offline and updates (18) | `npm run test:pwa` | First visit, fully offline use (including Word import), a normal update, an update that can't finish, recovery. Builds and serves the app and drives headless Edge. |
 | AI behaviour | `npm run test:ai` (needs Ollama) | Extraction and rewriting with German, hostile, cookie-wall, gibberish and very long input |
 | Types | `npm run typecheck` | Strict TypeScript, server and web |
