@@ -97,7 +97,7 @@ export function Keywords({ value, onChange, missing = [] }: { value: string[]; o
   render (onClose is a new function each time) with a delayed add could outlive the popup and close the
   next one as soon as it was clicked.
 */
-function useCloseOnOutside(ref: React.RefObject<HTMLElement>, onClose: () => void) {
+export function useCloseOnOutside(ref: React.RefObject<HTMLElement>, onClose: () => void) {
   const latest = useRef(onClose);
   latest.current = onClose;
   useEffect(() => {

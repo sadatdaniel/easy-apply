@@ -3,6 +3,7 @@ import { blockToMarkdown, parseBlocks, replaceBlock, serializeBlocks, setTypes, 
 import { renderDoc } from '@shared/render';
 import { wordDiff } from '@shared/diff';
 import type { DocMeta, DocStyle } from '@shared/types';
+import { useCloseOnOutside } from './ui';
 import { CONTENT, MARGIN, PAGE_H, paginate } from './paginate';
 import { blockEl, blocksToHtml, blocksToText, cut, htmlToBlocks, indexOf, lengthOf, MD_TYPE, offsetIn, placeCaret, prepare, resolve, textToBlocks, type Caret } from './pageEdit';
 
@@ -492,13 +493,13 @@ export function DocEditor({ body, meta, onChange, onMeta, readOnly = false, tail
 
 /** the type all selected lines share, or null when they differ */
 const rangeKind = (bs: { type: string }[]): LineType | null => { const t = new Set(bs.filter(b => b.type !== 'hr').map(b => b.type)); return t.size === 1 ? [...t][0] as LineType : null; };
-const TYPES: [LineType, string, string][] = [['p', 'Text', 'Paragraph'], ['li', 'Bullet', 'Bullet point'], ['h2', 'Section', 'Section heading'], ['h3', 'Entry', 'Entry: "Title | dates", with the place on the next line']];
+const TYPES: [LineType, string, string][] = [['p', 'Text', 'Paragraph'], ['li', 'Bullet', 'Bullet point'], ['h2', 'Section', 'Section heading']];
 const SIZES = [85, 90, 95, 100, 105, 110, 115, 120];
 
 /**
-  Sticky bar above the page. Line tools (type, bold, italic, link, divider) act on the lines the selection
-  touches; the bar never takes the focus from the page (mousedown is cancelled). Size, spacing, alignment and
-  margins apply to the whole document: a CV reads better when it is consistent.
+  Sticky bar above the page. Its tools act on the selected text: the kind of line, bold, italic, a link, a
+  divider. They never take the focus from the page (mousedown is cancelled). Text size, line spacing,
+  alignment and margins apply to the whole document, so they sit apart, behind "Whole document".
 */
 function FormatBar({ target, style, wrap, link, setType, divider, setStyle, undo, redo }: {
   /** the selected lines (many > 1 when several); null when the caret is not on the page */
@@ -506,10 +507,11 @@ function FormatBar({ target, style, wrap, link, setType, divider, setStyle, undo
   wrap: (m: string) => void; link: () => void; setType: (t: LineType) => void; divider: () => void;
   setStyle?: (s: DocStyle) => void; undo?: () => void; redo?: () => void;
 }) {
-  const keep = (e: React.MouseEvent) => { if (!(e.target as HTMLElement).closest('select')) e.preventDefault(); };
+  const keep = (e: React.MouseEvent) => { if (!(e.target as HTMLElement).closest('select, .docset')) e.preventDefault(); };
   // stick just below the screen's own sticky toolbar (.edbar), whose height changes when it wraps
   const ref = useRef<HTMLDivElement>(null);
   const [top, setTop] = useState(0);
+  const [docOpen, setDocOpen] = useState(false);
   useLayoutEffect(() => {
     const above = ref.current?.closest('.content')?.querySelector('.edbar');
     if (!above) return;
@@ -520,17 +522,8 @@ function FormatBar({ target, style, wrap, link, setType, divider, setStyle, undo
   const off = !target;
   const editing = target?.type ?? null;
   const many = target?.many ?? 0;
-  const hint = off ? 'Click into the page, or select several lines' : undefined;
-  const size = style.size ?? 100;
-  const set = (patch: Partial<DocStyle>) => {
-    const next: DocStyle = { ...style, ...patch };
-    for (const k of Object.keys(next) as (keyof DocStyle)[]) if (next[k] === undefined || (k === 'size' && next.size === 100)) delete next[k];
-    setStyle?.(next);
-  };
-  const step = (d: number) => {
-    const i = SIZES.indexOf(size) < 0 ? SIZES.indexOf(100) : SIZES.indexOf(size);
-    set({ size: SIZES[Math.max(0, Math.min(SIZES.length - 1, i + d))] });
-  };
+  const hint = off ? 'Click into the page, or select some text' : undefined;
+  const changed = Object.keys(style).length;
 
   return (
     <div ref={ref} className="fmtbar" style={{ top: top + 8 }} onMouseDown={keep} onClick={e => e.stopPropagation()}>
@@ -538,6 +531,7 @@ function FormatBar({ target, style, wrap, link, setType, divider, setStyle, undo
         <button disabled={!undo} title="Undo (Ctrl+Z)" onClick={undo}>↶</button>
         <button disabled={!redo} title="Redo (Ctrl+Shift+Z)" onClick={redo}>↷</button>
       </div>
+      <span className="fmt-l" title={hint}>{off ? 'Select text to format it' : many ? `${many} lines:` : 'Selection:'}</span>
       <div className="fg" title={hint}>
         {TYPES.map(([t, label, title]) => (
           <button key={t} className={editing === t ? 'on' : ''} disabled={off || editing === 'h1'} title={title} onClick={() => setType(t)}>{label}</button>
@@ -547,27 +541,52 @@ function FormatBar({ target, style, wrap, link, setType, divider, setStyle, undo
         <button disabled={off} title="Bold (Ctrl+B)" onClick={() => wrap('**')}><b>B</b></button>
         <button disabled={off} title="Italic (Ctrl+I)" onClick={() => wrap('*')}><i>I</i></button>
         <button disabled={off || many > 0} title={many ? 'Links work on one line at a time' : 'Link (Ctrl+K)'} onClick={link}>Link</button>
-        <button disabled={off} title="Insert a divider (horizontal line) below" onClick={divider}>Divider</button>
       </div>
-      {many > 0 && <span className="fmt-count">{many} lines</span>}
+      <div className="fg" title={hint}><button disabled={off} title="Insert a divider (a horizontal line) below" onClick={divider}>— Divider</button></div>
       {setStyle && <>
-        <div className="fg" title="Text size for the whole document">
+        <span className="sp" />
+        <div className="docset-wrap">
+          <button className={'docset-btn' + (docOpen ? ' on' : '')} onClick={() => setDocOpen(o => !o)} title="Text size, line spacing, alignment and margins, for every page">
+            Whole document{changed ? ' •' : ''} ▾</button>
+          {docOpen && <DocSettings style={style} setStyle={setStyle} close={() => setDocOpen(false)} />}
+        </div>
+      </>}
+    </div>
+  );
+}
+
+/** settings for the whole document, in their own panel so it is clear they are not about the selection */
+function DocSettings({ style, setStyle, close }: { style: DocStyle; setStyle: (s: DocStyle) => void; close: () => void }) {
+  const ref = useRef<HTMLDivElement>(null);
+  useCloseOnOutside(ref, close);
+  const size = style.size ?? 100;
+  const set = (patch: Partial<DocStyle>) => {
+    const next: DocStyle = { ...style, ...patch };
+    for (const k of Object.keys(next) as (keyof DocStyle)[]) if (next[k] === undefined || (k === 'size' && next.size === 100)) delete next[k];
+    setStyle(next);
+  };
+  const step = (d: number) => {
+    const i = SIZES.indexOf(size) < 0 ? SIZES.indexOf(100) : SIZES.indexOf(size);
+    set({ size: SIZES[Math.max(0, Math.min(SIZES.length - 1, i + d))] });
+  };
+  const seg = <T extends string | number | undefined>(value: T, options: [T, string][], pick: (v: T) => void) => (
+    <div className="fg">{options.map(([v, l]) => <button key={String(v)} className={value === v ? 'on' : ''} onClick={() => pick(v)}>{l}</button>)}</div>
+  );
+  return (
+    <div ref={ref} className="docset">
+      <div className="docset-h"><b>Whole document</b><small>These apply to every page, not just the selection.</small></div>
+      <label>Text size
+        <div className="fg">
           <button onClick={() => step(-1)} disabled={size <= SIZES[0]} title="Smaller">A−</button>
           <span className="val">{size}%</span>
           <button onClick={() => step(1)} disabled={size >= SIZES[SIZES.length - 1]} title="Bigger">A+</button>
-        </div>
-        <select title="Line spacing for the whole document" value={style.lineHeight ?? ''} onChange={e => set({ lineHeight: e.target.value ? Number(e.target.value) : undefined })}>
-          <option value="">Lines</option><option value="1.15">Tight</option><option value="1.3">Normal</option><option value="1.5">Relaxed</option>
-        </select>
-        <div className="fg" title="Alignment of paragraphs and bullets">
-          <button className={style.align === 'left' ? 'on' : ''} onClick={() => set({ align: style.align === 'left' ? undefined : 'left' })}>Left</button>
-          <button className={style.align === 'justify' ? 'on' : ''} onClick={() => set({ align: style.align === 'justify' ? undefined : 'justify' })}>Justify</button>
-        </div>
-        <select title="Page margins" value={style.margins ?? ''} onChange={e => set({ margins: (e.target.value || undefined) as DocStyle['margins'] })}>
-          <option value="">Margins</option><option value="narrow">Narrow</option><option value="wide">Wide</option>
-        </select>
-        {Object.keys(style).length > 0 && <button className="reset" onClick={() => setStyle({})} title="Back to the theme's own size, spacing and margins">Reset</button>}
-      </>}
+        </div></label>
+      <label>Line spacing{seg(style.lineHeight, [[undefined, 'Design'], [1.15, 'Tight'], [1.3, 'Normal'], [1.5, 'Relaxed']], v => set({ lineHeight: v }))}</label>
+      <label>Alignment{seg(style.align, [[undefined, 'Design'], ['left', 'Left'], ['justify', 'Justify']], v => set({ align: v }))}</label>
+      <label>Margins{seg(style.margins, [[undefined, 'Design'], ['narrow', 'Narrow'], ['wide', 'Wide']], v => set({ margins: v }))}</label>
+      <div className="docset-f">
+        <button className="link" disabled={!Object.keys(style).length} onClick={() => setStyle({})}>Back to the design's own settings</button>
+      </div>
     </div>
   );
 }
