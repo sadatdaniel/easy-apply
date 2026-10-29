@@ -1,0 +1,16 @@
+// Cloudflare Workers: serves the built app (web/dist) and the posting fetcher (/api/fetch-posting).
+// Build command: npm run build -w web · Deploy command: npx wrangler deploy
+{
+  "name": "easy-apply",
+  "main": "worker/index.ts",
+  "compatibility_date": "2025-09-01",
+  "assets": {
+    "directory": "./web/dist",
+    "binding": "ASSETS",
+    // every page is the app's main page (/#…, /?print…), so a missing file is a real 404: an update that
+    // breaks halfway must never get a web page where it expects code
+    "not_found_handling": "none",
+    // only the posting fetcher runs code; every other request is a plain file
+    "run_worker_first": ["/api/*"]
+  }
+}

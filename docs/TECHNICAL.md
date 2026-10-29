@@ -18,9 +18,9 @@ Then open http://localhost:5173. The app runs entirely in the browser. On first 
 
 `npm run dev` also starts a small local helper on port 4317. Browsers may not read other websites, so the helper is what fetches a job posting from a link; it also creates the PDFs (see Export). Without it, paste the posting text. The helper only answers pages on localhost (add a hosted copy's origin with `EASYCV_ORIGINS=https://…`) and refuses private network addresses.
 
-### Hosting (Cloudflare Pages)
+### Hosting (Cloudflare Workers)
 
-The public site is published by Cloudflare Pages from this repository: every push to `main` is built and published, other branches get preview addresses. Build command `npm run build -w web`, output directory `web/dist`, environment variable `NODE_VERSION=22`. `functions/api/fetch-posting.ts` runs next to it as a Pages Function: it fetches a job posting's page for the browser (only the link is sent, only the app's own pages may use it, never local or private addresses; see `shared/fetchpage.ts`). `web/public/_headers` sets response headers (no caching for the offline worker, so updates arrive). `EASYCV_BASE=/sub/path/` builds the app for a host that serves it under a sub-path.
+The public site is published by Cloudflare from this repository: every push to `main` is built and published, other branches get preview versions. Build command `npm run build -w web`, deploy command `npx wrangler deploy` (preview: `npx wrangler versions upload`), environment variable `NODE_VERSION=22`; `wrangler.jsonc` points Cloudflare at `web/dist` and at `worker/index.ts`, which runs the posting fetcher (`functions/api/fetch-posting.ts`, which also works as a Pages Function). Missing files are real 404s, never the app's page. The fetcher it fetches a job posting's page for the browser (only the link is sent, only the app's own pages may use it, never local or private addresses; see `shared/fetchpage.ts`). `web/public/_headers` sets response headers (no caching for the offline worker, so updates arrive). `EASYCV_BASE=/sub/path/` builds the app for a host that serves it under a sub-path.
 
 ### Install, offline, updates
 
