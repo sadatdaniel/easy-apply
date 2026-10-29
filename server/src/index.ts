@@ -6,12 +6,11 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parsePosting } from '../../shared/posting';
 import { fetchPublicPage } from './net';
-import { htmlToPdf } from './pdf';
 
 /*
-  Optional local helper. The app itself runs entirely in the browser; browsers may not read
-  other sites (CORS), so fetching a job posting from a link goes through this helper when it runs, and so does turning
-  documents into PDFs with selectable text (pdf.ts).
+  Optional local helper. The app itself runs entirely in the browser (PDFs included); browsers may not read
+  other sites (CORS), so fetching a job posting from a link goes through this helper when it runs (the hosted
+  app has the same fetch as a Cloudflare function).
   It also serves the built app (web/dist) for people who prefer `npm start` over hosting.
 */
 
@@ -20,7 +19,7 @@ const PORT = Number(process.env.EASYCV_PORT ?? 4317);
 // pages allowed to use the helper: local ones, plus a hosted copy of the app if you add its origin
 const ORIGINS = [/^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/, ...(process.env.EASYCV_ORIGINS ?? '').split(',').filter(Boolean).map(o => new RegExp(`^${o.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`))];
 
-const app = Fastify({ logger: { level: 'warn' }, bodyLimit: 8 * 1024 * 1024 });
+const app = Fastify({ logger: { level: 'warn' } });
 
 app.addHook('onRequest', async (req, reply) => {
   // only answer when addressed as localhost: a web page that re-points its own domain at 127.0.0.1
@@ -40,14 +39,7 @@ app.setErrorHandler((err: Error & { statusCode?: number }, _req, reply) => {
   reply.code(err.statusCode && err.statusCode >= 400 ? err.statusCode : 500).send({ error: err.message });
 });
 
-app.get('/api/helper', async () => ({ ok: true, app: 'easy-cv', pdf: true }));
-
-// one document's HTML (built by the app, fonts and styles inlined) → an A4 PDF with selectable text
-app.post<{ Body: { html: string } }>('/api/pdf', async (req, reply) => {
-  const html = String(req.body?.html ?? '');
-  if (!html.includes('class="sheet')) throw Object.assign(new Error('Expected a document page.'), { statusCode: 400 });
-  return reply.type('application/pdf').send(await htmlToPdf(html));
-});
+app.get('/api/helper', async () => ({ ok: true, app: 'easy-cv' }));
 
 app.post<{ Body: { url: string } }>('/api/fetch-posting', async req => {
   const url = String(req.body?.url ?? '').trim();

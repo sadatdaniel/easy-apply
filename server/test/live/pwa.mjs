@@ -90,6 +90,16 @@ try {
     const { result: { nodeId: n2 } } = await cdp('DOM.querySelector', { nodeId: r2.nodeId, selector: 'input[type=file][accept*=pdf]' });
     await cdp('DOM.setFileInputFiles', { nodeId: n2, files: [path.join(ROOT, 'server', 'test', 'fixtures', 'alex-letter-and-cv.pdf').split(path.sep).join('/')] }); }
   check('offline: PDF import (pdf.js worker, under the security policy) works', await waitFor(`return document.querySelectorAll('.import-parts .btn').length >= 2`, 20000));
+  await run(`[...document.querySelectorAll('button')].find(b=>b.textContent==='Cancel')?.click(); return 1;`); await sleep(500);
+  // PDF export, made in the browser: pdf-lib, fontkit and the .woff fonts all come from the offline cache
+  await run(H + `location.hash='#apps'; await sleep(900);
+    [...document.querySelectorAll('.col.jobs button.row')].find(b=>b.textContent.includes('Hafenblick')).click(); await sleep(900);
+    const job = location.hash; location.hash = job + '/1'; await sleep(1200);
+    btn('Choose a CV').click(); await sleep(1200);
+    [...document.querySelectorAll('*')].find(e=>e.children.length===0 && e.textContent.trim()==='Classic CV').click(); await sleep(400);
+    [...document.querySelectorAll('button')].find(b=>b.textContent.trim()==='Add').click(); await sleep(1500);
+    location.hash = job + '/2'; return 1;`);
+  check('offline: PDF export (made in the browser) works', await waitFor(`return /Download one PDF \\(2 pages\\)/.test(document.body.innerText)`, 30000));
   await shot('pwa-offline.png');
   check('offline: no errors', errors.length === 0, errors.slice(0, 3).join(' | '));
   await cdp('Page.reload', {}); await sleep(2500);

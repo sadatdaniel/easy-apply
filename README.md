@@ -41,6 +41,7 @@ Your CV is about as personal as documents get. Easy Apply treats it that way.
 - **Nothing calls home.** No analytics, no tracking, no telemetry. Easy Apply only goes online when you ask it to: to fetch a job posting from a link (only the link is sent, never your documents), or to use the AI provider you chose.
 - **You decide about AI.** It's entirely optional; the app works fully without it. If you want it, run a model on your own computer, so nothing leaves your machine. Or use your own key for OpenRouter, OpenAI or Gemini, and the app tells you when text goes to a cloud service.
 - **Your keys stay in your browser.** They're never written into your documents folder, and they're only sent to the provider they belong to.
+- **PDFs are made on your computer.** Your documents become PDFs right in the browser; they're never uploaded to be converted.
 - **Works offline.** Once opened, Easy Apply runs without an internet connection, and a full backup is one click.
 
 ## Help along the way
@@ -71,6 +72,7 @@ LM Studio works the same way: turn on CORS in its server settings.
 - **Chrome or Edge.** Easy Apply is built and tested for them. Firefox and Safari don't let a website open a folder on your computer, and there's nothing a website can do about that: in those browsers your files can only live inside the browser.
 
 - Word files keep their look best. A PDF keeps its fonts and sizes, but not its colours.
+- If your Word file uses a font Easy Apply doesn't come with (Calibri, Cambria and the like), Export asks once whether it may use the fonts on your computer, so the PDF has them too. Say no, or use another browser, and a similar font stands in.
 - Photos and other images inside a CV are left out; the text comes through.
 - Designer templates built from floating text boxes come in as text, but may need their order and headings fixed by hand.
 

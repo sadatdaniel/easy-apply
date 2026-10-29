@@ -16,7 +16,7 @@ Then open http://localhost:5173. The app runs entirely in the browser. On first 
 - **A folder on this computer** (Chrome, Edge): the app reads and writes plain files in the folder you pick. After a browser restart it asks once for permission again, unless you choose "Allow on every visit".
 - **Inside this browser** (any browser): private browser storage; files are reachable only through the app.
 
-`npm run dev` also starts a small local helper on port 4317. Browsers may not read other websites, so the helper is what fetches a job posting from a link; it also creates the PDFs (see Export). Without it, paste the posting text. The helper only answers pages on localhost (add a hosted copy's origin with `EASYCV_ORIGINS=https://…`) and refuses private network addresses.
+`npm run dev` also starts a small local helper on port 4317. Browsers may not read other websites, so the helper is what fetches a job posting from a link (the hosted app has the same fetch as a Cloudflare function, `functions/api/fetch-posting.ts`). Without either, paste the posting text. The helper only answers pages on localhost (add a hosted copy's origin with `EASYCV_ORIGINS=https://…`) and refuses private network addresses.
 
 ### Hosting (Cloudflare Workers)
 
@@ -50,7 +50,7 @@ Step 3 (Export) puts documents, attached PDFs and images in the order you set (d
 
 Pages: `web/src/paginate.ts` decides where pages break (A4, 12 mm top and bottom margins; a heading never stays alone at the bottom), once, for the editor and the PDF alike. The editor shows the pages; the PDF gets a page break at the same places, so both match.
 
-Documents become PDFs through the local helper, which prints them with the Edge or Chrome already installed (Playwright drives it; no browser is downloaded; set `EASYCV_BROWSER` to use another Chromium). The PDFs have real, selectable text, which applicant tracking systems need. Fonts are bundled with the app and embedded into each page sent to the helper, so PDFs look the same offline. Without the helper, "print the documents with the browser" still works.
+Documents become PDFs in the browser (`web/src/pdfdraw.ts`, with pdf-lib and fontkit): the page is laid out off screen with the app's styles, broken into pages by `paginate.ts`, and every word, line, border, bullet and coloured area is drawn into the PDF where the browser put it. Text lines and box edges sit on whole pixels, as they do when Chrome prints, and each word is spread to the width the browser measured, so the PDF matches the editor and a printed copy to within a pixel. The text is real, in reading order, in embedded subsets of the bundled fonts, so applicant tracking systems can read it; links are clickable. A Word file's own fonts (Calibri, Cambria, ...) come from the computer through Local Font Access (Chrome and Edge, once allowed, from the Export step); without them the page is laid out and drawn in the stand-in font (Arimo or Tinos). Nothing is sent anywhere. "Print the documents with the browser" remains as an alternative.
 
 ## Backup
 

@@ -1,14 +1,12 @@
 import { parseBlocks } from '@shared/blocks';
 import { renderMeta } from '@shared/render';
-import { api, HELPER, type Doc } from './api';
-import themesCss from './themes.css?raw';
-import { pagedHtml } from './paginate';
+import { api, type Doc } from './api';
+import { drawPdf } from './pdfdraw';
 
 /*
   Final bucket → one merged PDF, or a zip of separate files, in the bucket's order.
-  - Documents (.md) become PDFs through the local helper, which prints them with the installed Edge/Chrome:
-    real text, selectable and readable by applicant tracking systems. The page carries its own fonts
-    (embedded below), so the PDF looks the same online and offline.
+  - Documents (.md) become PDFs right here in the browser (pdfdraw.ts): laid out with the app's own fonts and
+    broken into pages as the editor shows them, with real text that applicant tracking systems can read.
   - Attached PDFs are copied in page by page; images become one A4 page each.
   - Anything else (a .docx, say) can't be merged; it still goes into the zip.
   pdf-lib and fflate load only when exporting.
@@ -19,73 +17,19 @@ export interface Bundle { pdf: Uint8Array; items: BundleItem[]; parts: { name: s
 const kindOf = (n: string): BundleItem['kind'] => n.endsWith('.md') ? 'doc' : /\.pdf$/i.test(n) ? 'pdf' : /\.(png|jpe?g)$/i.test(n) ? 'image' : 'other';
 export const safe = (s: string) => s.normalize('NFKD').replace(/[̀-ͯ]/g, '').replace(/[^\p{L}\p{N}]+/gu, '_').replace(/^_|_$/g, '') || 'file';
 
-/* ---------- fonts: inline the ones a theme uses, as data URLs ---------- */
-const fontCache = new Map<string, Promise<string>>();
-
-function familiesFor(theme: string) {
-  const fams = new Set<string>(['Inter']); // placeholder chips
-  for (const m of themesCss.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
-    if (!m[1].includes(`.t-${theme}`) && !/^\s*\.sheet\b/.test(m[1])) continue;
-    for (const f of m[2].matchAll(/font-family:\s*([^;]+)/g))
-      for (const name of f[1].split(',')) fams.add(name.trim().replace(/^['"]|['"]$/g, ''));
-  }
-  return fams;
-}
-
-async function fontFaces(theme: string): Promise<string> {
-  const want = familiesFor(theme);
-  const out: Promise<string>[] = [];
-  for (const sheet of [...document.styleSheets]) {
-    let rules: CSSRuleList;
-    try { rules = sheet.cssRules; } catch { continue; }
-    for (const r of [...rules]) {
-      if (!(r instanceof CSSFontFaceRule)) continue;
-      const fam = r.style.getPropertyValue('font-family').replace(/^['"]|['"]$/g, '');
-      const src = r.style.getPropertyValue('src').match(/url\(["']?([^"')]+\.woff2)["']?\)/)?.[1];
-      if (!want.has(fam) || !src) continue;
-      const url = new URL(src, sheet.href ?? location.href).href;
-      if (!fontCache.has(url)) fontCache.set(url, fetch(url).then(r => r.blob()).then(blobToDataUrl));
-      out.push(fontCache.get(url)!.then(data => `@font-face{font-family:'${fam}';font-style:${r.style.getPropertyValue('font-style') || 'normal'};font-weight:${r.style.getPropertyValue('font-weight') || '400'};${r.style.getPropertyValue('unicode-range') ? `unicode-range:${r.style.getPropertyValue('unicode-range')};` : ''}src:url(${data}) format('woff2');}`));
-    }
-  }
-  return (await Promise.all(out)).join('\n');
-}
-
-const blobToDataUrl = (b: Blob) => new Promise<string>((res, rej) => { const f = new FileReader(); f.onload = () => res(String(f.result)); f.onerror = rej; f.readAsDataURL(new Blob([b], { type: 'font/woff2' })); });
-
-/** a complete, self-contained HTML page for one document */
-export async function docHtml(d: Doc): Promise<string> {
-  // broken into pages where the editor shows the breaks
-  const page = await pagedHtml(renderMeta(parseBlocks(d.body), d.meta));
-  const esc = (s: string) => s.replace(/[<&]/g, c => (c === '<' ? '&lt;' : '&amp;'));
-  return `<!doctype html><html lang="${esc(d.meta.lang)}"><head><meta charset="utf-8"><title>${esc(d.meta.title)}</title><style>
-${await fontFaces(d.meta.theme)}
-${themesCss}
-body{margin:0;background:#fff}
-/* an unfilled placeholder prints as plain text, not as an on-screen chip */
-.sheet .ph{background:none;color:inherit;font:inherit;padding:0}
-</style></head><body>${page}</body></html>`;
-}
-
 /* ---------- PDFs ---------- */
 const pdfCache = new Map<string, Promise<Uint8Array>>(); // same document text and look → same PDF
 
-async function docPdf(d: Doc): Promise<Uint8Array> {
-  const key = JSON.stringify([d.body, d.meta]);
+async function docPdf(d: Doc, author: string): Promise<Uint8Array> {
+  const key = JSON.stringify([d.body, d.meta, author]);
   if (!pdfCache.has(key)) {
-    pdfCache.set(key, (async () => {
-      const r = await fetch(`${HELPER}/api/pdf`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ html: await docHtml(d) }) });
-      if (!r.ok) throw new Error((await r.json().catch(() => ({})) as { error?: string }).error ?? `The helper could not create the PDF (${r.status})`);
-      return new Uint8Array(await r.arrayBuffer());
-    })());
+    pdfCache.set(key, drawPdf(renderMeta(parseBlocks(d.body), d.meta), { title: d.meta.title, author }));
     pdfCache.get(key)!.catch(() => pdfCache.delete(key));
   }
   return pdfCache.get(key)!;
 }
-
-export async function pdfReady(): Promise<boolean> {
-  try { const r = await fetch(`${HELPER}/api/helper`, { signal: AbortSignal.timeout(1500) }); return r.ok && !!(await r.json()).pdf; } catch { return false; }
-}
+/** forget the PDFs made so far (the fonts they could use changed) */
+export const forgetPdfs = () => pdfCache.clear();
 
 const A4 = [595.28, 841.89] as const;
 
@@ -103,7 +47,7 @@ export async function buildBundle(jobId: string, order: string[], docs: Doc[], m
     onProgress(`Preparing ${title} (${i + 1} of ${order.length})…`);
     if (kind === 'doc') {
       if (!doc) continue;
-      const bytes = await docPdf(doc);
+      const bytes = await docPdf(doc, meta.author);
       const src = await PDFDocument.load(bytes);
       (await merged.copyPages(src, src.getPageIndices())).forEach(p => merged.addPage(p));
       items.push({ name, title, kind, pages: src.getPageCount() });

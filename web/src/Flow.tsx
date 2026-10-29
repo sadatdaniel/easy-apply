@@ -3,7 +3,8 @@ import { parseBlocks } from '@shared/blocks';
 import type { AppState, ExtractedFields, Job, JobFields } from '@shared/types';
 import { api, type Doc, type JobDetail } from './api';
 import { DocumentsStep } from './Documents';
-import { buildBundle, bundleZip, download, pdfReady, safe, type Bundle } from './exporter';
+import { buildBundle, bundleZip, download, forgetPdfs, safe, type Bundle } from './exporter';
+import { askFontAccess, fontAccess, ownFonts } from './pdfdraw';
 import { useSortable } from './sortable';
 import { DownloadIcon, Dot, Keywords, STATUS, StatusMenu, useAction, useToast } from './ui';
 
@@ -214,7 +215,8 @@ const pick = (j: Job): JobFields => ({ title: j.title, company: j.company, locat
 function SendStep({ job, docs, state, reload, back }: { job: Job; docs: Doc[]; state: AppState; reload: () => Promise<void>; back: () => void }) {
   const [order, setOrder] = useState(job.bucket);
   const [exportName, setExportName] = useState(job.exportName || defaultExportName(docs, job));
-  const [helper, setHelper] = useState<boolean | null>(null);
+  const [fonts, setFonts] = useState<Awaited<ReturnType<typeof fontAccess>> | null>(null);
+  const [fontsAsked, setFontsAsked] = useState(0); // a new answer about fonts: the PDFs are made again
   const [bundle, setBundle] = useState<Bundle | null>(null);
   const [busy, setBusy] = useState('');
   const [err, setErr] = useState('');
@@ -222,7 +224,7 @@ function SendStep({ job, docs, state, reload, back }: { job: Job; docs: Doc[]; s
   const [showPreview, setShowPreview] = useState(false);
   const run = useAction();
   useEffect(() => setOrder(job.bucket), [job.bucket.join('|')]);
-  useEffect(() => { pdfReady().then(setHelper); }, []);
+  useEffect(() => { fontAccess().then(setFonts); }, []);
   const all = [...job.docs, ...job.extras];
   const off = all.filter(n => !order.includes(n));
   const save = async (o: string[]) => { setOrder(o); await run(() => api.setBucket(job.id, o)); await reload(); };
@@ -232,11 +234,14 @@ function SendStep({ job, docs, state, reload, back }: { job: Job; docs: Doc[]; s
   const printable = order.filter(n => n.endsWith('.md'));
   const author = nameIn(docs.filter(d => order.includes(d.name)));
   const file = (exportName.trim() || 'Application').replace(/[\\/:*?"<>|]+/g, '_');
+  // fonts from an uploaded Word file that the app doesn't ship: the PDF can use this computer's copies, if allowed
+  const wordFonts = [...new Set(printable.flatMap(n => ownFonts(docOf(n)?.meta.look)))];
+  async function allowFonts() { setFonts(await askFontAccess() ? 'granted' : await fontAccess()); forgetPdfs(); setFontsAsked(k => k + 1); }
   const unfilled = [...new Set(printable.flatMap(n => [...(docOf(n)?.body ?? '').matchAll(/\{\{\s*([\w.-]+)\s*\}\}/g)].map(m => m[1])))];
 
   // the preview is the real merged PDF; rebuilt shortly after the order or a document changes
   useEffect(() => {
-    if (!helper || !order.length) { setBundle(null); return; }
+    if (!order.length) { setBundle(null); return; }
     let stale = false;
     const t = setTimeout(async () => {
       setErr('');
@@ -245,7 +250,7 @@ function SendStep({ job, docs, state, reload, back }: { job: Job; docs: Doc[]; s
       finally { if (!stale) setBusy(''); }
     }, 400);
     return () => { stale = true; clearTimeout(t); };
-  }, [helper, order.join('|'), docs]);
+  }, [order.join('|'), docs, fontsAsked]);
   useEffect(() => {
     if (!bundle) { setPreviewUrl(''); return; }
     const u = URL.createObjectURL(new Blob([bundle.pdf as BlobPart], { type: 'application/pdf' }));
@@ -300,13 +305,16 @@ function SendStep({ job, docs, state, reload, back }: { job: Job; docs: Doc[]; s
         <div className="outbox">
           <h4>Export</h4>
           <label className="f">File name<input className="input" value={exportName} onChange={e => setExportName(e.target.value)} onBlur={keepName} /></label>
-          {helper === false && <div className="note" style={{ fontSize: 12.5 }}>
-            Creating PDFs needs the small local helper, which prints with the Edge or Chrome on this computer. Run <code>npm start</code> (or <code>npm run dev</code>) in the app folder, then <button className="link" onClick={() => pdfReady().then(setHelper)}>check again</button>.
+          {wordFonts.length > 0 && fonts === 'ask' && <div className="note" style={{ fontSize: 12.5 }}>
+            Your file uses {wordFonts.join(', ')}. To put {wordFonts.length === 1 ? 'it' : 'them'} in the PDF, the browser needs your permission to use the fonts on this computer; until then a similar font stands in. <button className="link" onClick={allowFonts}>Use my fonts</button>
+          </div>}
+          {wordFonts.length > 0 && (fonts === 'denied' || fonts === 'unsupported') && <div className="muted" style={{ fontSize: 12 }}>
+            {wordFonts.join(', ')}: {fonts === 'denied' ? 'the browser isn’t allowed to use the fonts on this computer (site settings)' : 'this browser can’t put the fonts on this computer in a PDF (Chrome and Edge can)'}, so a similar font stands in.
           </div>}
           <button className="btn pri" disabled={!bundle || !!busy} onClick={async () => { await keepName(); download(bundle!.pdf, `${file}.pdf`); }}>
             <DownloadIcon /> Download one PDF{bundle ? ` (${bundle.pages} page${bundle.pages === 1 ? '' : 's'})` : ''}</button>
           <button className="btn" disabled={!bundle || !!busy} onClick={async () => { await keepName(); download(await bundleZip(bundle!, file), `${file}.zip`); }}><DownloadIcon /> Download zip</button>
-          {helper && order.length > 0 && <button className="btn" disabled={!bundle} onClick={() => setShowPreview(p => !p)}>{showPreview ? 'Hide the preview' : 'Preview the PDF'}</button>}
+          {order.length > 0 && <button className="btn" disabled={!bundle} onClick={() => setShowPreview(p => !p)}>{showPreview ? 'Hide the preview' : 'Preview the PDF'}</button>}
           <span className="muted" style={{ fontSize: 12 }}>The zip holds the merged PDF and each file on its own, numbered in this order. The PDFs have real text, so job portals can read them.</span>
           {skipped.map(x => <div key={x.name} className="muted" style={{ fontSize: 12 }}><b>{x.name}</b>: {x.note}.</div>)}
           {unfilled.length > 0 && <div className="note" style={{ fontSize: 12.5 }}>Still unfilled: {unfilled.map(u => <code key={u}>{`{{${u}}}`} </code>)}. They would appear as written.</div>}
@@ -316,7 +324,7 @@ function SendStep({ job, docs, state, reload, back }: { job: Job; docs: Doc[]; s
             ? <button className="btn" onClick={async () => { if (await run(() => api.setStatus(job.id, 'applied'), 'Marked as applied. Follow-up reminder in 7 days.')) reload(); }}>✓ Mark as applied today</button>
             : <span className="badge ok" style={{ alignSelf: 'flex-start' }}><Dot s={job.status} /> {STATUS[job.status].label}{job.next ? ` · ${job.next}` : ''}</span>}
         </div>
-        {showPreview && order.length > 0 && helper && <div className="bundle">
+        {showPreview && order.length > 0 && <div className="bundle">
           <div className="bundle-h"><b>Preview</b>{bundle && <span className="muted"> · {bundle.pages} page{bundle.pages === 1 ? '' : 's'}, exactly as it will be sent</span>}
             <span className="sp" />{busy && <span className="muted"><span className="spin" /> {busy}</span>}</div>
           {err ? <div className="error">{err}</div>

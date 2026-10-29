@@ -47,7 +47,8 @@ export default defineConfig({
         ],
       },
       workbox: {
-        globPatterns: ['**/*.{js,mjs,css,html,svg,png,woff2}'],
+        // .woff2 is what pages show; .woff is what PDFs embed (the PDF library reads it reliably)
+        globPatterns: ['**/*.{js,mjs,css,html,svg,png,woff2,woff}'],
         navigateFallback: `${BASE}index.html`, // deep links work offline too
         // control the page from the very first visit, so on-demand code (PDF export, Word import) works offline
         // even in the tab that installed the app; later updates still wait for the user's "Reload"

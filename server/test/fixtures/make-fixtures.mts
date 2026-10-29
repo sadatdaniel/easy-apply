@@ -1,12 +1,9 @@
 // Builds the sample files of a made-up person, Alex Example, used by the end-to-end checks and the README
 // screenshots: a Word CV (alex-cv.docx) and a PDF with a cover letter followed by the CV (alex-letter-and-cv.pdf).
-//   npx tsx test/fixtures/make-fixtures.mts      (the PDF needs the local helper running: npm run dev)
+//   npx tsx test/fixtures/make-fixtures.mts      (writes the Word CV; the PDF was exported from the app)
 import fs from 'node:fs';
 import path from 'node:path';
 import { strToU8, zipSync } from 'fflate';
-import { PDFDocument } from 'pdf-lib';
-import { parseBlocks } from '../../../shared/blocks';
-import { renderDoc } from '../../../shared/render';
 
 const DIR = import.meta.dirname;
 const xml = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -24,61 +21,6 @@ const JOBS = [
   ] },
 ];
 const SKILLS = [['Languages', 'Python, SQL, TypeScript'], ['Tools', 'PostgreSQL, Airflow, Docker, Git'], ['Data', 'Pandas, dbt, Power BI']];
-
-const CV_MD = `# Alex Example
-
-Data Engineer
-
-+49 151 000 0000 | alex@example.com | github.com/alex-example | 20095 Hamburg
-
-Data engineer with five years of experience turning messy operational data into reliable pipelines and clear reports.
-
-## Skills
-
-${SKILLS.map(([k, v]) => `- **${k}:** ${v}`).join('\n')}
-
-## Experience
-
-${JOBS.map(j => `### ${j.title} | ${j.dates}\n${j.org}\n\n${j.bullets.map(b => `- ${b}`).join('\n')}`).join('\n\n')}
-
-## Education
-
-### B.Sc. Computer Science | 2020
-University of Hamburg
-
-## Languages
-
-- English – C1
-- German – native
-`;
-
-const LETTER_MD = `# Alex Example
-
-Data Engineer
-alex@example.com
-
----
-
-May 2026
-
-**Lumen Labs**
-
-Berlin, Germany
-
-**Re: Data Engineer**
-
-Dear Lumen Labs Team,
-
-Building smarter tools for music discovery is exactly the kind of mission that excites me, and I believe my background in data engineering makes me a strong fit for your team.
-
-At Harbour Foods I build the Python and SQL pipelines behind our daily dashboards, and I moved our weekly reports to automated jobs that save the team hours every week.
-
-I would love to help Lumen Labs turn listening data into features people enjoy, and I am available for a conversation at your convenience.
-
-Kind regards,
-
-**Alex Example**
-`;
 
 /* ---------- Word: contact table, bold headings, entries as "Title" + table row, real bullet lists, and a look
    of its own (Georgia text, blue capital headings with a line under them, 2 cm side margins) ---------- */
@@ -114,21 +56,6 @@ function docx(): Uint8Array {
   });
 }
 
-/* ---------- PDF: the letter, then the CV, printed by the helper like an export ---------- */
-async function pdf(): Promise<Uint8Array> {
-  const css = fs.readFileSync(path.join(DIR, '../../../web/src/themes.css'), 'utf8');
-  const one = async (md: string, kind: 'cv' | 'cover') => {
-    const html = `<!doctype html><html><head><meta charset="utf-8"><style>${css} body{margin:0}</style></head><body>${renderDoc(parseBlocks(md), 'classic', kind, 'en')}</body></html>`;
-    const r = await fetch('http://127.0.0.1:4317/api/pdf', { method: 'POST', headers: { 'content-type': 'application/json', origin: 'http://127.0.0.1:5173' }, body: JSON.stringify({ html }) });
-    if (!r.ok) throw new Error(`helper: ${r.status} ${await r.text()}`);
-    return PDFDocument.load(new Uint8Array(await r.arrayBuffer()));
-  };
-  const out = await PDFDocument.create();
-  for (const d of [await one(LETTER_MD, 'cover'), await one(CV_MD, 'cv')]) (await out.copyPages(d, d.getPageIndices())).forEach(pg => out.addPage(pg));
-  out.setTitle('Alex Example – letter and CV');
-  return out.save();
-}
-
 fs.writeFileSync(path.join(DIR, 'alex-cv.docx'), docx());
-fs.writeFileSync(path.join(DIR, 'alex-letter-and-cv.pdf'), await pdf());
-console.log('wrote alex-cv.docx and alex-letter-and-cv.pdf');
+// alex-letter-and-cv.pdf is the made-up letter and CV exported from the app (Export: letter, then CV)
+console.log('wrote alex-cv.docx');
