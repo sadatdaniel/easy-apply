@@ -129,7 +129,7 @@ describe('tailoring guards', () => {
     const ask: Ask = async (_s, u) => { prompt = u; return JSON.stringify({ text: '- Ran Airflow for 40 pipelines', why: '' }); };
     const i = parseBlocks(body).findIndex(b => b.type === 'li');
     const r = await tailorBlock(store, ask, job.id, name, body, i);
-    expect(prompt).toContain('the main CV "Full CV"');
+    expect(prompt).toContain('their CV "Full CV"');
     expect(r.unverified).toEqual([]);
   });
 

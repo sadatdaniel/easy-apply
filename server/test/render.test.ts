@@ -78,9 +78,12 @@ describe('blocks', () => {
     // a line with a bold label becomes bold as a whole, without broken markers
     expect(toggleMark(parseBlocks('- **Languages:** Python'), 0, 0, '**')[0].text).toBe('**Languages: Python**');
   });
-  it('a divider shows in a letter body; the first one only separates the header', () => {
-    const d = dom(renderDoc(parseBlocks('# A\n\nme@x.test\n\n---\n\nDear X,\n\n---\n\nRegards'), 'classic', 'cover'));
-    expect(d.querySelectorAll('hr').length).toBe(1);
+  it('a letter: the first divider closes the header, and both can be picked on the page', () => {
+    for (const theme of ['classic', 'sidebar', 'serif', 'academic']) {
+      const d = dom(renderDoc(parseBlocks('# A\n\nme@x.test\n\n---\n\nDear X,\n\n---\n\nRegards'), theme, 'cover'));
+      expect([...d.querySelectorAll('hr')].map(h => [h.className, h.getAttribute('data-b')])).toEqual([['lh-rule', '2'], ['', '4']]);
+      expect(d.querySelector('.lh-rule')!.parentElement!.matches('header, .side')).toBe(true);
+    }
   });
 
   it('placeholders: known ones fill, unknown and empty ones stay visible', () => {

@@ -496,3 +496,13 @@ table.t tr.closed td { color:var(--muted); }
 .scard.dragging { opacity:.45; }
 .scard.off { opacity:.6; }
 .scard[draggable="true"] { cursor:grab; }
+
+/* ---------- My documents: a folder, like the picker ---------- */
+.library { flex:1; min-height:0; display:grid; grid-template-columns:200px minmax(0,1fr) 340px; background:var(--paper); }
+.library.over { box-shadow:inset 0 0 0 3px var(--accent); }
+.library .pk-grid { padding:0 24px 30px; }
+.lib-h { position:sticky; top:0; z-index:2; background:var(--paper); display:flex; gap:16px; align-items:flex-end; justify-content:space-between; flex-wrap:wrap; padding:18px 0 10px; border-bottom:1px solid var(--line); margin-bottom:6px; }
+.lib-h h2 { margin:0; font-size:20px; } .lib-h p { margin:2px 0 0; font-size:12.5px; }
+.lib-btns { display:flex; gap:6px; flex-wrap:wrap; }
+.lib-acts { display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
+.doc-ic { width:14px; height:18px; border:1.5px solid var(--muted); border-radius:2px; background:var(--paper); flex:none; }

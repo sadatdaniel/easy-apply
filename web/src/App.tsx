@@ -8,10 +8,11 @@ import { useAiStatus } from './aiStatus';
 import { Applications } from './Applications';
 import { FlowWindow, resumeOf, STEPS } from './Flow';
 import { useAction } from './ui';
-import { Extras, MyCv, Settings, Tracker } from './Views';
+import { Settings, Tracker } from './Views';
+import { Library } from './Library';
 
-type View = 'apps' | 'templates' | 'extras' | 'tracker' | 'settings';
-const VIEWS: [View, string][] = [['apps', 'Applications'], ['templates', 'My documents'], ['extras', 'Extras'], ['tracker', 'Tracker'], ['settings', 'Settings']];
+type View = 'apps' | 'templates' | 'tracker' | 'settings';
+const VIEWS: [View, string][] = [['apps', 'Applications'], ['templates', 'My documents'], ['tracker', 'Tracker'], ['settings', 'Settings']];
 
 /*
   The view, the picked application and its window live in the URL hash, so reloads and Back/Forward keep your
@@ -89,8 +90,7 @@ function Main({ changeFolder }: { changeFolder: () => void }) {
       {nav.view === 'apps' && <Applications state={state} refresh={refresh} jobId={nav.job === 'new' ? null : nav.job}
         select={job => setNav(n => ({ ...n, job, step: null, min: false }))} open={open} />}
       {nav.view === 'tracker' && <Tracker state={state} refresh={refresh} open={id => open(id, 0)} />}
-      {nav.view === 'templates' && <MyCv state={state} refresh={refresh} />}
-      {nav.view === 'extras' && <Extras state={state} refresh={refresh} />}
+      {nav.view === 'templates' && <Library state={state} refresh={refresh} />}
       {nav.view === 'settings' && <Settings state={state} refresh={refresh} changeFolder={changeFolder} />}
       {flowJob && <FlowWindow key={flowJob === 'new' ? 'new' : 'job'} state={state} refresh={refresh} jobId={flowJob} step={nav.step!} min={nav.min} firstDoc={firstDoc}
         setFlow={f => setNav(n => ({ ...n, job: f.job ?? n.job, step: f.step ?? n.step, min: f.min ?? n.min, view: f.min === false ? 'apps' : n.view }))}

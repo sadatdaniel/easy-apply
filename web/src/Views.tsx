@@ -1,14 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
-import { THEMES } from '@shared/render';
-import { mainIds } from '@shared/store';
-import { CLOSED, STATUSES, type AppState, type DocMeta, type TemplateInfo, type Job, type Status } from '@shared/types';
+import { CLOSED, STATUSES, type AppState, type Job, type Status } from '@shared/types';
 import { api, helperRunning, lastBackup } from './api';
 import { download } from './exporter';
 import { ACCENTS, applyAppearance, loadAppearance, LOOKS, type AccentId, type Appearance, type LookId } from './appearance';
-import { DocWorkspace } from './DocWorkspace';
 import { Providers } from './Providers';
-import { CV_ACCEPT, ImportReview, readCvFile, type CvUpload } from './ImportCv';
-import { ContextMenu, Dot, fmtDate, fmtDateTime, STATUS, StatusMenu, useAction, useToast, useUnsavedWarning, type MenuItem } from './ui';
+import { Dot, fmtDate, fmtDateTime, STATUS, StatusMenu, useAction, useToast } from './ui';
 
 /* ---------------- tracker ---------------- */
 export function Tracker({ state, refresh, open }: { state: AppState; refresh: () => Promise<void>; open: (id: string) => void }) {
@@ -53,136 +49,6 @@ export function Tracker({ state, refresh, open }: { state: AppState; refresh: ()
       </table>
       {menu && <StatusMenu anchor={menu.rect} current={menu.job.status} onClose={() => setMenu(null)}
         onPick={async (s, note) => { const j = menu.job; setMenu(null); if (await run(() => api.setStatus(j.id, s, note), `${j.company} → ${STATUS[s].label}`)) refresh(); }} />}
-    </div>
-  );
-}
-
-/* ---------------- My documents (templates on disk) ---------------- */
-const LANG = (l: string) => (l === 'de' ? 'Deutsch' : l === 'en' ? 'English' : l.toUpperCase());
-
-export function MyCv({ state, refresh }: { state: AppState; refresh: () => Promise<void> }) {
-  const mains = mainIds(state.templates);
-  const [id, setId] = useState<string | null>(() => [...mains][0] ?? state.templates[0]?.id ?? null);
-  const [t, setT] = useState<{ meta: DocMeta; body: string } | null>(null);
-  const [upload, setUpload] = useState<CvUpload | null>(null);
-  const [menu, setMenu] = useState<{ x: number; y: number; items: MenuItem[]; ask?: MenuItem } | null>(null);
-  const file = useRef<HTMLInputElement>(null);
-  const run = useAction();
-  useEffect(() => { if (id) api.template(id).then(setT); else setT(null); }, [id]);
-
-  async function pick(f: File | undefined) {
-    if (!f) return;
-    const u = await run(() => readCvFile(f));
-    if (u) setUpload(u);
-  }
-  async function create(kind: DocMeta['kind'], from?: string) {
-    const title = from ? `${t?.meta.title} (copy)` : kind === 'cover' ? 'New cover letter' : 'New CV';
-    const r = await run(() => api.createTemplate({ title, kind, lang: t?.meta.lang ?? 'en', theme: t?.meta.theme ?? 'classic' }, from));
-    if (r) { await refresh(); setId(r.id); }
-  }
-  const mainWord = (kind: string) => (kind === 'cover' ? 'main cover letter' : 'main CV');
-  async function makeMain(x: { id: string; title: string; lang: string; kind: string }) {
-    if (await run(() => api.setMain(x.id), `"${x.title}" is now your ${mainWord(x.kind)} (${LANG(x.lang)})`)) {
-      await refresh();
-      if (id) api.template(id).then(setT); // the open document's "main" flag may have changed
-    }
-  }
-  const deleteItem = (x: { id: string; title: string }): MenuItem => ({
-    label: 'Delete…', danger: true,
-    confirm: `Delete "${x.title}"? It moves to the .trash folder inside your files. Applications that already use it keep their own copies.`,
-    onClick: async () => {
-      if (await run(() => api.trashTemplate(x.id), `Deleted "${x.title}"`)) {
-        await refresh();
-        if (x.id === id) setId(null);
-      }
-    },
-  });
-  const rowMenu = (x: TemplateInfo): MenuItem[] => [
-    { label: 'Open', onClick: () => setId(x.id) },
-    ...((x.kind === 'cv' || x.kind === 'cover') && !mains.has(x.id) ? [{ label: `Make ${mainWord(x.kind)} (${LANG(x.lang)})`, onClick: () => makeMain(x) }] : []),
-    { label: 'Duplicate', onClick: () => create(x.kind, x.id) },
-    deleteItem(x),
-  ];
-  const groups: [string, TemplateInfo[]][] = [
-    ['CVs', state.templates.filter(x => x.kind === 'cv')],
-    ['Cover letters', state.templates.filter(x => x.kind === 'cover')],
-    ['Other', state.templates.filter(x => x.kind === 'other')],
-  ];
-
-  return (
-    <div className="split">
-      <div className="side-list">
-        <div className="mycv-intro">
-          Your CVs and cover letters. An application gets its own copy of the ones you pick, so these originals stay untouched. AI suggestions use facts from your main CV (★).
-        </div>
-        <button className="btn pri sm" onClick={() => file.current?.click()}>⬆ Upload CV or cover letter…</button>
-        <input ref={file} type="file" accept={CV_ACCEPT} hidden onChange={e => { pick(e.target.files?.[0]); e.target.value = ''; }} />
-        {groups.map(([label, list]) => list.length > 0 && <div key={label}>
-          <div className="grp">{label}</div>
-          {list.map(x => (
-            <button key={x.id} className={'row' + (x.id === id && !upload ? ' on' : '')} onClick={() => { setUpload(null); setId(x.id); }}
-              onContextMenu={e => { e.preventDefault(); setMenu({ x: e.clientX, y: e.clientY, items: rowMenu(x) }); }} title="Right-click for more">
-              <span className="tx"><div>{x.title}</div><small>{LANG(x.lang)} · {THEMES[x.theme]?.name ?? x.theme}</small></span>
-              {mains.has(x.id) && <span className="main-badge" title={`${mainWord(x.kind)} for ${LANG(x.lang)}`}>★ Main</span>}
-            </button>
-          ))}
-        </div>)}
-        <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
-          <button className="btn sm" style={{ flex: 1 }} onClick={() => create('cv')}>+ Blank CV</button>
-          <button className="btn sm" style={{ flex: 1 }} onClick={() => create('cover')}>+ Cover letter</button>
-        </div>
-        <details className="muted" style={{ fontSize: 12, padding: '10px 6px' }}>
-          <summary>Placeholders in letters</summary>
-          Filled in from each job when you add the letter to an application:<br />{['company', 'job_title', 'job_location', 'today'].map(k => <code key={k} style={{ display: 'inline-block', marginRight: 6 }}>{`{{${k}}}`}</code>)}
-        </details>
-      </div>
-      <div className="content" style={{ background: 'var(--bg)' }}>
-        {upload ? <ImportReview upload={upload} templates={state.templates}
-          onCancel={() => setUpload(null)} onDone={async newId => { setUpload(null); await refresh(); setId(newId); }} />
-        : t && id ? <DocWorkspace key={id} doc={t} onSaved={d => { setT(d); refresh(); }}
-            store={{ save: async (body, meta) => {
-              try { const r = await api.saveTemplate(id, meta, body); return { meta: r.meta, body: r.body }; }
-              catch (e) { if ((e as { statusCode?: number }).statusCode === 404) return { meta, body }; throw e; } // deleted meanwhile
-            } }}
-            head={(meta, setMeta) => <>
-              <input className="input" style={{ width: 220 }} value={meta.title} onChange={e => setMeta({ title: e.target.value }, false)} aria-label="Title" />
-              <select className="input" style={{ width: 'auto' }} value={meta.kind} onChange={e => setMeta({ kind: e.target.value as DocMeta['kind'] })}>
-                <option value="cv">CV</option><option value="cover">Cover letter</option><option value="other">Other</option></select>
-              <select className="input" style={{ width: 'auto' }} value={meta.lang} onChange={e => setMeta({ lang: e.target.value })}>
-                <option value="en">English</option><option value="de">Deutsch</option><option value="other">Other</option></select>
-              {(meta.kind === 'cv' || meta.kind === 'cover') && (mains.has(id)
-                ? <span className="main-badge" title="Marked as your main one for this language">★ {mainWord(meta.kind).replace(/^m/, 'M')} ({LANG(meta.lang)})</span>
-                : <button className="btn sm" onClick={() => makeMain({ id, title: meta.title, lang: meta.lang, kind: meta.kind })}>☆ Make {mainWord(meta.kind)}</button>)}
-            </>}
-            tools={<button className="btn sm" onClick={e => { const r = e.currentTarget.getBoundingClientRect(); const d = deleteItem({ id, title: t.meta.title }); setMenu({ x: r.left, y: r.bottom + 6, items: [d], ask: d }); }}>Delete…</button>}
-            margin={<div className="note" style={{ fontSize: 12.5 }}>This is your original. Applications get their own copy of it, so changes here only show up in applications you start from now on.</div>} />
- : <div className="mycv-empty">
-          <h2>{state.templates.some(x => x.kind === 'cv') ? 'Pick a CV or letter on the left' : 'Upload your CV and cover letter'}</h2>
-          <p className="muted">Easy Apply tailors both to every job. Word and PDF files are read in this browser; nothing is uploaded anywhere.</p>
-          <button className="btn pri" onClick={() => file.current?.click()}>⬆ Upload CV or cover letter…</button>
-        </div>}
-      </div>
-      {menu && <ContextMenu {...menu} onClose={() => setMenu(null)} />}
-    </div>
-  );
-}
-
-/* ---------------- extras library ---------------- */
-export function Extras({ state, refresh }: { state: AppState; refresh: () => Promise<void> }) {
-  const input = useRef<HTMLInputElement>(null);
-  const run = useAction();
-  async function upload(files: FileList | null) { for (const f of files ?? []) await run(() => api.uploadExtra(f), `Added ${f.name}`); refresh(); }
-  return (
-    <div className="page-v">
-      <h1>Extras</h1>
-      <p className="muted">Certificates, references, transcripts. Attach them to any application in step 4.</p>
-      <div className="xlist" style={{ marginTop: 18 }}>
-        {state.extras.map(x => <a key={x.name} className="x" href="#" onClick={e => { e.preventDefault(); run(() => api.openExtra(x.name)); }} style={{ textDecoration: 'none', color: 'inherit' }}>
-          <span className="ic">{x.name.split('.').pop()?.toUpperCase().slice(0, 4)}</span><span className="tx"><b>{x.name}</b><small>{(x.size / 1024).toFixed(0)} KB · {fmtDate(x.updatedAt)}</small></span></a>)}
-      </div>
-      <div className="drop" onClick={() => input.current?.click()} onDragOver={e => e.preventDefault()} onDrop={e => { e.preventDefault(); upload(e.dataTransfer.files); }}>
-        Drop files here, or <u>browse</u>.<input ref={input} type="file" multiple hidden onChange={e => upload(e.target.files)} />
-      </div>
     </div>
   );
 }
@@ -291,4 +157,3 @@ export function AppearancePicker() {
     </div>
   );
 }
-

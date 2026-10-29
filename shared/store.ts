@@ -222,6 +222,16 @@ export function createStore(fs: Fs) {
   }
   const listExtras = () => listFiles(D.extras);
   const extraFile = (name: string) => fs.readBlob(join(D.extras, safeName(name)));
+  /** Deleting a file moves it to <root>/.trash/extras; applications keep their own copies. */
+  async function trashExtra(name: string) {
+    const n = safeName(name);
+    const from = join(D.extras, n);
+    if (!(await fs.exists(from))) throw notFound('File');
+    const ext = extname(n);
+    const to = await uniquePath(fs, join('.trash', 'extras'), basename(n, ext), ext);
+    await fs.move(from, to);
+    return to;
+  }
   async function addExtra(rawName: string, data: Blob) {
     const name = cleanFileName(rawName);
     const ext = extname(name);
@@ -416,7 +426,7 @@ export function createStore(fs: Fs) {
   return {
     fs, ensureRoot, addStarters, getProfile, saveProfile,
     listTemplates, getTemplate, saveTemplate, createTemplate, trashTemplate, setMain, mainCv,
-    listExtras, extraFile, addExtra,
+    listExtras, extraFile, addExtra, trashExtra,
     getJob, listJobs, createJob, updateJob, setStatus, trashJob, getPosting, savePosting,
     addDocFromTemplate, addDocFromExample, removeDoc, getDoc, saveDoc, listVersions, getVersion, restoreVersion,
     attachExtra, detachExtra, setBucket, jobFile,

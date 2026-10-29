@@ -116,6 +116,7 @@ export const api = {
   uploadExtra: async (file: File) => ({ name: await s().addExtra(file.name, file) }),
   openExtra: async (name: string) => openBlob(await s().extraFile(name)),
   extraBlob: (name: string) => s().extraFile(name),
+  trashExtra: (name: string) => s().trashExtra(name),
 
   async fetchPosting(url: string): Promise<FetchedPosting> {
     url = url.trim();

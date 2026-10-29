@@ -33,7 +33,8 @@
 .t-classic li::before { content:"●"; position:absolute; left:2px; font-size:9px; line-height:16px; }
 .t-classic section > p { margin-bottom:2px; }
 .t-classic.letter { padding:72px 92px; font-family:Arial, Arimo, sans-serif; font-size:13.3px; line-height:1.3; color:#111; }
-.t-classic.letter .lh { padding-bottom:16px; border-bottom:1px solid #d8d8d8; margin-bottom:22px; }
+.t-classic.letter .lh { margin-bottom:22px; }
+.t-classic.letter .lh-rule { border-top:1px solid #d8d8d8; margin:16px 0 0; }
 .t-classic.letter .lh h1 { font-family:Arial, Arimo, sans-serif; font-size:18.7px; margin:0; letter-spacing:0; }
 .t-classic.letter .lh div { color:#666; }
 .t-classic.letter .lh div + div { color:#111; }
@@ -63,6 +64,7 @@
 .t-sidebar .main li::before { content:""; position:absolute; left:2px; top:6px; width:5px; height:5px; border-radius:50%; background:#0f766e; }
 .t-sidebar.letter p { margin:0 0 12px; font-size:11.8px; line-height:1.55; }
 .t-sidebar.letter .side div { margin-bottom:5px; }
+.t-sidebar.letter .lh-rule { border-top:1px solid #cfe1de; margin:14px 0 0; }
 .t-sidebar.letter .subject { font-family:Poppins, sans-serif; font-weight:600; font-size:14px; color:#0f4c45; margin:0 0 16px; }
 
 /* ===== Serif (Fraunces + Source Serif) ===== */
@@ -81,7 +83,8 @@
 .t-serif .ed { font-family:Inter, sans-serif; font-size:10px; color:#7a7064; white-space:nowrap; }
 .t-serif li { position:relative; padding-left:14px; margin-bottom:1px; }
 .t-serif li::before { content:"–"; position:absolute; left:0; color:#b4572e; }
-.t-serif.letter header { text-align:left; border-bottom:.8px solid #e0d6c6; padding-bottom:14px; margin-bottom:24px; }
+.t-serif.letter header { text-align:left; margin-bottom:24px; }
+.t-serif.letter .lh-rule { border-top:.8px solid #e0d6c6; margin:14px 0 0; }
 .t-serif.letter h1 { font-size:26px; }
 .t-serif.letter .subject { font-family:Fraunces, serif; font-size:16px; font-weight:500; margin:20px 0 14px; }
 .t-serif.letter p { margin:0 0 12px; font-size:12.4px; line-height:1.55; }
@@ -101,6 +104,7 @@
 .t-academic li { position:relative; padding-left:24px; text-align:justify; margin-bottom:1px; }
 .t-academic li::before { content:"●"; position:absolute; left:8px; font-size:8px; top:2px; }
 .t-academic.letter .lh { margin-bottom:18px; }
+.t-academic.letter .lh-rule { border-top:1px solid #a0a0a0; margin:8px 0 0; }
 .t-academic.letter p { margin:0 0 12px; text-align:justify; }
 .t-academic.letter .subject { font-weight:700; margin:16px 0 12px; }
 

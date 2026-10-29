@@ -21,9 +21,13 @@ export async function tailorBlock(store: Store, ask: Ask, id: string, name: stri
   const kinds: Record<string, string> = { h2: 'section heading', li: 'bullet', p: 'paragraph' };
   const original = blockToMarkdown(b);
   const others = await Promise.all(job.docs.filter(n => n !== name).map(async n => ({ name: `${n} (for this job)`, body: (await store.getDoc(id, n)).body })));
-  // the main CV holds everything the candidate has done, even what this job's copy left out
+  // their CVs hold everything they have done, even what this job's copy left out: the original this copy came
+  // from, and their main CV in this language (the first one they uploaded, unless they picked another)
+  const src = job.sources?.[name];
+  const source = src && !src.startsWith('example:') ? await store.getTemplate(src).catch(() => null) : null;
   const main = await store.mainCv(doc.meta.lang).catch(() => null);
-  if (main && ![body, ...others.map(o => o.body)].includes(main.body)) others.push({ name: `the main CV "${main.meta.title}" (all their experience)`, body: main.body });
+  for (const cv of [source?.meta.kind === 'cv' ? source : null, main])
+    if (cv && ![body, ...others.map(o => o.body)].includes(cv.body)) others.push({ name: `their CV "${cv.meta.title}" (their experience)`, body: cv.body });
   const r = await rewriteBlock(ask, {
     block: original, kind: kinds[b.type] ?? b.type, section, entry: lastH?.type === 'h3' ? lastH.text : '',
     document: body, posting, others,

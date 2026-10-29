@@ -131,8 +131,10 @@ function renderLetter(blocks: Block[], theme: string, layout: string): string {
   // header = everything before the first --- rule (or just the # name line)
   let split = blocks.findIndex(b => b.type === 'hr');
   if (split < 0) split = blocks[0]?.type === 'h1' ? 1 : 0;
+  // the rule under the header is a real divider: it can be picked and removed like any other
+  const rule = blocks[split]?.type === 'hr' ? `<hr class="lh-rule"${at(split)}>` : '';
   const head = blocks.slice(0, split).map((b, k) =>
-    b.type === 'h1' ? `<h1${at(k)}>${inline(b.text)}</h1>` : `<div${at(k)}>${inline(b.text)}</div>`).join('');
+    b.type === 'h1' ? `<h1${at(k)}>${inline(b.text)}</h1>` : `<div${at(k)}>${inline(b.text)}</div>`).join('') + rule;
   const body = blocks.slice(split).map((b, n) => {
     const k = split + n;
     if (b.type === 'hr') return k === split ? '' : `<hr${at(k)}>`; // the first one only separates the header

@@ -170,13 +170,13 @@ export function DocumentsStep({ state, job, reload, active, setActive, next, bac
 }
 
 /* ---------------- small previews ---------------- */
-function MiniDoc({ doc }: { doc: { meta: DocMeta; body: string } }) {
+export function MiniDoc({ doc }: { doc: { meta: DocMeta; body: string } }) {
   const html = useMemo(() => renderDoc(parseBlocks(doc.body), doc.meta.theme, doc.meta.kind, doc.meta.lang, doc.meta.style), [doc.body, doc.meta]);
   return <div dangerouslySetInnerHTML={{ __html: html }} />;
 }
 
 /** a PDF's first page (via the browser's own viewer) or an image */
-function FileThumb({ job, name, library = false, big = false }: { job?: string; name: string; library?: boolean; big?: boolean }) {
+export function FileThumb({ job, name, library = false, big = false }: { job?: string; name: string; library?: boolean; big?: boolean }) {
   const [url, setUrl] = useState('');
   useEffect(() => {
     if (!big && !/\.(png|jpe?g)$/i.test(name)) return;
