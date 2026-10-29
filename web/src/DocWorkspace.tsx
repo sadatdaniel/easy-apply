@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { keywordMatch, THEMES } from '@shared/render';
-import type { DocMeta, VersionInfo } from '@shared/types';
+import type { DocMeta, DocStyle, VersionInfo } from '@shared/types';
 import { DocEditor, type Tailor } from './DocEditor';
 import { fmtDateTime, useAction, useUnsavedWarning } from './ui';
 
@@ -90,9 +90,6 @@ export function DocWorkspace({ doc: initial, store, head, tools, onSaved, margin
         <span className="sp" />
         <span className="muted" style={{ fontSize: 12 }}>{saving === 'saving' ? 'Saving…' : saving === 'dirty' ? 'Unsaved' : 'Saved'}</span>
         {store.tailor && <button className={'btn sm pri tailor' + (tailorMode ? ' on' : '')} disabled={!!preview} title="Click a line to get a version tailored to this job, then accept or reject it" onClick={() => setTailorMode(t => !t)}>{tailorMode ? '✨ Tailoring · click a line' : '✨ Tailor to this job'}</button>}
-        <select className="input" style={{ width: 'auto', padding: '5px 8px' }} value={doc.meta.theme} onChange={e => setMeta({ theme: e.target.value })} aria-label="Design">
-          {Object.entries(THEMES).map(([k, t]) => <option key={k} value={k}>Design: {t.name}</option>)}
-        </select>
         {tools}
         {store.print && <button className="btn sm" onClick={async () => { await flush(); store.print!(); }}>Print / PDF</button>}
       </div>
@@ -111,20 +108,21 @@ export function DocWorkspace({ doc: initial, store, head, tools, onSaved, margin
               </div>
               <DocEditor body={preview.body} meta={doc.meta} readOnly />
             </>
-          ) : <DocEditor body={doc.body} meta={doc.meta} onChange={change} onMeta={setMeta} tailor={store.tailor} tailorMode={tailorMode} />}
+          ) : <DocEditor body={doc.body} meta={doc.meta} onChange={change} tailor={store.tailor} tailorMode={tailorMode} />}
         </div>
-        <div className="margin">
+        <aside className="inspector">
+          <DocumentSettings meta={doc.meta} set={setMeta} />
           {margin}
           {match && match.score !== null && (
-            <div className="card"><h4>Keyword match</h4>
+            <div className="ins-sec"><h4>Keyword match</h4>
               <div className="meter"><i style={{ width: match.score + '%' }} /></div><b style={{ fontSize: 20 }}>{match.score}%</b>
               {match.missing.length > 0 && <p className="muted" style={{ fontSize: 12, margin: '6px 0 0' }}>Not mentioned yet:<br />{match.missing.map(k => <span key={k} className="kw miss">{k}</span>)}</p>}
             </div>
           )}
-          {match && match.score === null && <div className="card muted" style={{ fontSize: 12.5 }}>Add key requirements in step 1 to see a keyword match here.</div>}
+          {match && match.score === null && <div className="ins-sec"><h4>Keyword match</h4><p className="muted" style={{ fontSize: 12.5, margin: 0 }}>Add key requirements in step 1 to see how well this matches them.</p></div>}
           {store.keywords && unfilled.length > 0 && <div className="note" style={{ fontSize: 12.5 }}>Not filled in: {unfilled.map(u => <code key={u}>{`{{${u}}}`} </code>)}<br />Type over them on the page.</div>}
           {store.versions && (
-            <div className="card"><h4>Versions</h4>
+            <div className="ins-sec"><h4>Versions</h4>
               <div className="vlist">
                 {versions.slice(0, 12).map(v => (
                   <button key={v.id} className={preview?.v.id === v.id ? 'on' : ''} onClick={async () => { const b = await run(() => store.version!(v.id)); if (b !== undefined) setPreview({ v, body: b }); }}>
@@ -135,8 +133,48 @@ export function DocWorkspace({ doc: initial, store, head, tools, onSaved, margin
               <button className="btn sm" style={{ marginTop: 8, width: '100%' }} onClick={async () => { queue(latest.current, { version: true }); }}>Save a version now</button>
             </div>
           )}
-        </div>
+        </aside>
       </div>
     </>
+  );
+}
+
+const SIZES = [85, 90, 95, 100, 105, 110, 115, 120];
+
+/** the whole document's look: its design, and the settings that adjust it for every page */
+function DocumentSettings({ meta, set }: { meta: DocMeta; set: (patch: Partial<DocMeta>) => void }) {
+  const style = meta.style ?? {};
+  const size = style.size ?? 100;
+  const put = (patch: Partial<DocStyle>) => {
+    const next: DocStyle = { ...style, ...patch };
+    for (const k of Object.keys(next) as (keyof DocStyle)[]) if (next[k] === undefined || (k === 'size' && next.size === 100)) delete next[k];
+    set({ style: next });
+  };
+  const step = (d: number) => {
+    const i = SIZES.indexOf(size) < 0 ? SIZES.indexOf(100) : SIZES.indexOf(size);
+    put({ size: SIZES[Math.max(0, Math.min(SIZES.length - 1, i + d))] });
+  };
+  const seg = <T extends string | number | undefined>(value: T, options: [T, string][], pick: (v: T) => void) => (
+    <div className="seg-ctl">{options.map(([v, l]) => <button key={String(v)} className={value === v ? 'on' : ''} onClick={() => pick(v)}>{l}</button>)}</div>
+  );
+  return (
+    <div className="ins-sec">
+      <h4>Document</h4>
+      <p className="ins-note">For every page of this document.</p>
+      <label className="ins-row"><span>Design</span>
+        <select className="input" value={meta.theme} onChange={e => set({ theme: e.target.value })}>
+          {Object.entries(THEMES).map(([k, t]) => <option key={k} value={k}>{t.name}</option>)}
+        </select></label>
+      <div className="ins-row"><span>Text size</span>
+        <div className="seg-ctl stepper">
+          <button onClick={() => step(-1)} disabled={size <= SIZES[0]} title="Smaller" aria-label="Smaller text">A−</button>
+          <span>{size}%</span>
+          <button onClick={() => step(1)} disabled={size >= SIZES[SIZES.length - 1]} title="Bigger" aria-label="Bigger text">A+</button>
+        </div></div>
+      <div className="ins-col"><span>Line spacing</span>{seg(style.lineHeight, [[undefined, 'Design'], [1.15, 'Tight'], [1.3, 'Normal'], [1.5, 'Relaxed']], v => put({ lineHeight: v }))}</div>
+      <div className="ins-col"><span>Alignment</span>{seg(style.align, [[undefined, 'Design'], ['left', 'Left'], ['justify', 'Justify']], v => put({ align: v }))}</div>
+      <div className="ins-col"><span>Margins</span>{seg(style.margins, [[undefined, 'Design'], ['narrow', 'Narrow'], ['wide', 'Wide']], v => put({ margins: v }))}</div>
+      {Object.keys(style).length > 0 && <button className="link" style={{ fontSize: 12.5, alignSelf: 'flex-start' }} onClick={() => set({ style: {} })}>Back to the design's own settings</button>}
+    </div>
   );
 }

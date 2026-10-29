@@ -2,8 +2,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { blockToMarkdown, parseBlocks, replaceBlock, serializeBlocks, setTypes, toggleMark, type Block, type LineType } from '@shared/blocks';
 import { renderDoc } from '@shared/render';
 import { wordDiff } from '@shared/diff';
-import type { DocMeta, DocStyle } from '@shared/types';
-import { useCloseOnOutside } from './ui';
+import type { DocMeta } from '@shared/types';
 import { CONTENT, MARGIN, PAGE_H, paginate } from './paginate';
 import { blockEl, blocksToHtml, blocksToText, cut, htmlToBlocks, indexOf, lengthOf, MD_TYPE, offsetIn, placeCaret, prepare, resolve, textToBlocks, type Caret } from './pageEdit';
 
@@ -25,10 +24,8 @@ type Span = { a: ReturnType<typeof resolve> & {}; b: ReturnType<typeof resolve> 
   Ctrl+Z / Ctrl+Shift+Z, copy and paste between documents. The browser never edits the page directly; each
   change is applied to the document's blocks and the page is drawn again (see pageEdit.ts).
 */
-export function DocEditor({ body, meta, onChange, onMeta, readOnly = false, tailor, tailorMode = false }: {
+export function DocEditor({ body, meta, onChange, readOnly = false, tailor, tailorMode = false }: {
   body: string; meta: DocMeta; onChange?: (body: string, opts?: { version?: boolean }) => void; readOnly?: boolean;
-  /** saves document settings (the formatting bar's text size, spacing …) */
-  onMeta?: (patch: Partial<DocMeta>) => void;
   /** asks the AI for a rewrite of one block; enables the ✨ tools */
   tailor?: Tailor;
   /** clicking a line asks for a rewrite instead of placing the caret */
@@ -434,9 +431,9 @@ export function DocEditor({ body, meta, onChange, onMeta, readOnly = false, tail
 
   return (
     <div className="paper-wrap" style={{ position: 'relative' }}>
-      {!readOnly && <FormatBar style={meta.style ?? {}} target={tailorMode ? null : barTarget} wrap={m => mark(m as '**' | '*')} link={link} setType={setType} divider={divider}
+      {!readOnly && <FormatBar target={tailorMode ? null : barTarget} wrap={m => mark(m as '**' | '*')} link={link} setType={setType} divider={divider}
         undo={hist.current.past.length ? undo : undefined} redo={hist.current.future.length ? redo : undefined}
-        setStyle={onMeta && (st => onMeta({ style: st }))} />}
+        />}
       <div ref={paper} className={'paper paged-view' + (readOnly ? '' : ' editable') + (tailorMode ? ' tailoring' : '')} style={{ width: 794, height: pages * PITCH - GAP }} onClick={onClick}>
         {Array.from({ length: pages }, (_, k) => <div key={k} className="page-card" style={{ top: k * PITCH, height: PAGE_H }} />)}
         <div ref={host} style={{ paddingTop: MARGIN }} className="page-host" dangerouslySetInnerHTML={{ __html: html }}
@@ -494,24 +491,22 @@ export function DocEditor({ body, meta, onChange, onMeta, readOnly = false, tail
 /** the type all selected lines share, or null when they differ */
 const rangeKind = (bs: { type: string }[]): LineType | null => { const t = new Set(bs.filter(b => b.type !== 'hr').map(b => b.type)); return t.size === 1 ? [...t][0] as LineType : null; };
 const TYPES: [LineType, string, string][] = [['p', 'Text', 'Paragraph'], ['li', 'Bullet', 'Bullet point'], ['h2', 'Section', 'Section heading']];
-const SIZES = [85, 90, 95, 100, 105, 110, 115, 120];
 
 /**
-  Sticky bar above the page. Its tools act on the selected text: the kind of line, bold, italic, a link, a
-  divider. They never take the focus from the page (mousedown is cancelled). Text size, line spacing,
-  alignment and margins apply to the whole document, so they sit apart, behind "Whole document".
+  Sticky bar above the page, for the selected text: the kind of line, bold, italic, a link, a divider. It never
+  takes the focus from the page (mousedown is cancelled). Settings for the whole document are in the panel on
+  the right (DocWorkspace).
 */
-function FormatBar({ target, style, wrap, link, setType, divider, setStyle, undo, redo }: {
+function FormatBar({ target, wrap, link, setType, divider, undo, redo }: {
   /** the selected lines (many > 1 when several); null when the caret is not on the page */
-  target: { type: LineType | null; many: number } | null; style: DocStyle;
+  target: { type: LineType | null; many: number } | null;
   wrap: (m: string) => void; link: () => void; setType: (t: LineType) => void; divider: () => void;
-  setStyle?: (s: DocStyle) => void; undo?: () => void; redo?: () => void;
+  undo?: () => void; redo?: () => void;
 }) {
-  const keep = (e: React.MouseEvent) => { if (!(e.target as HTMLElement).closest('select, .docset')) e.preventDefault(); };
+  const keep = (e: React.MouseEvent) => e.preventDefault();
   // stick just below the screen's own sticky toolbar (.edbar), whose height changes when it wraps
   const ref = useRef<HTMLDivElement>(null);
   const [top, setTop] = useState(0);
-  const [docOpen, setDocOpen] = useState(false);
   useLayoutEffect(() => {
     const above = ref.current?.closest('.content')?.querySelector('.edbar');
     if (!above) return;
@@ -523,7 +518,6 @@ function FormatBar({ target, style, wrap, link, setType, divider, setStyle, undo
   const editing = target?.type ?? null;
   const many = target?.many ?? 0;
   const hint = off ? 'Click into the page, or select some text' : undefined;
-  const changed = Object.keys(style).length;
 
   return (
     <div ref={ref} className="fmtbar" style={{ top: top + 8 }} onMouseDown={keep} onClick={e => e.stopPropagation()}>
@@ -543,50 +537,6 @@ function FormatBar({ target, style, wrap, link, setType, divider, setStyle, undo
         <button disabled={off || many > 0} title={many ? 'Links work on one line at a time' : 'Link (Ctrl+K)'} onClick={link}>Link</button>
       </div>
       <div className="fg" title={hint}><button disabled={off} title="Insert a divider (a horizontal line) below" onClick={divider}>— Divider</button></div>
-      {setStyle && <>
-        <span className="sp" />
-        <div className="docset-wrap">
-          <button className={'docset-btn' + (docOpen ? ' on' : '')} onClick={() => setDocOpen(o => !o)} title="Text size, line spacing, alignment and margins, for every page">
-            Whole document{changed ? ' •' : ''} ▾</button>
-          {docOpen && <DocSettings style={style} setStyle={setStyle} close={() => setDocOpen(false)} />}
-        </div>
-      </>}
-    </div>
-  );
-}
-
-/** settings for the whole document, in their own panel so it is clear they are not about the selection */
-function DocSettings({ style, setStyle, close }: { style: DocStyle; setStyle: (s: DocStyle) => void; close: () => void }) {
-  const ref = useRef<HTMLDivElement>(null);
-  useCloseOnOutside(ref, close);
-  const size = style.size ?? 100;
-  const set = (patch: Partial<DocStyle>) => {
-    const next: DocStyle = { ...style, ...patch };
-    for (const k of Object.keys(next) as (keyof DocStyle)[]) if (next[k] === undefined || (k === 'size' && next.size === 100)) delete next[k];
-    setStyle(next);
-  };
-  const step = (d: number) => {
-    const i = SIZES.indexOf(size) < 0 ? SIZES.indexOf(100) : SIZES.indexOf(size);
-    set({ size: SIZES[Math.max(0, Math.min(SIZES.length - 1, i + d))] });
-  };
-  const seg = <T extends string | number | undefined>(value: T, options: [T, string][], pick: (v: T) => void) => (
-    <div className="fg">{options.map(([v, l]) => <button key={String(v)} className={value === v ? 'on' : ''} onClick={() => pick(v)}>{l}</button>)}</div>
-  );
-  return (
-    <div ref={ref} className="docset">
-      <div className="docset-h"><b>Whole document</b><small>These apply to every page, not just the selection.</small></div>
-      <label>Text size
-        <div className="fg">
-          <button onClick={() => step(-1)} disabled={size <= SIZES[0]} title="Smaller">A−</button>
-          <span className="val">{size}%</span>
-          <button onClick={() => step(1)} disabled={size >= SIZES[SIZES.length - 1]} title="Bigger">A+</button>
-        </div></label>
-      <label>Line spacing{seg(style.lineHeight, [[undefined, 'Design'], [1.15, 'Tight'], [1.3, 'Normal'], [1.5, 'Relaxed']], v => set({ lineHeight: v }))}</label>
-      <label>Alignment{seg(style.align, [[undefined, 'Design'], ['left', 'Left'], ['justify', 'Justify']], v => set({ align: v }))}</label>
-      <label>Margins{seg(style.margins, [[undefined, 'Design'], ['narrow', 'Narrow'], ['wide', 'Wide']], v => set({ margins: v }))}</label>
-      <div className="docset-f">
-        <button className="link" disabled={!Object.keys(style).length} onClick={() => setStyle({})}>Back to the design's own settings</button>
-      </div>
     </div>
   );
 }

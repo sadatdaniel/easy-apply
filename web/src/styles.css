@@ -521,22 +521,26 @@ body.sorting, body.sorting * { cursor:grabbing !important; user-select:none !imp
 .page-mask { position:absolute; left:-1px; right:-1px; background:var(--bg); pointer-events:none; z-index:1; }
 .paper .rv, .paper .blk-tools { z-index:7; }
 
-/* the formatting bar: what acts on the selection, and apart from it what acts on the whole document */
+/* the formatting bar: tools for the selected text */
 .fmtbar .sp { flex:1; }
 .fmt-l { font-size:11.5px; color:var(--muted); padding:0 2px 0 4px; white-space:nowrap; }
-.docset-wrap { position:relative; }
-.docset-btn { all:unset; cursor:pointer; padding:4px 10px; border:1px dashed var(--line-strong); border-radius:7px; color:var(--ink); white-space:nowrap; }
-.docset-btn:hover, .docset-btn.on { border-style:solid; border-color:var(--accent); background:var(--accent-soft); color:var(--accent-text); }
-.docset { position:absolute; right:0; top:calc(100% + 8px); z-index:20; width:360px; background:var(--paper); border:1px solid var(--line); border-radius:10px; box-shadow:var(--shadow-lg); padding:12px 14px; display:flex; flex-direction:column; gap:10px; }
-.docset-h { display:flex; flex-direction:column; gap:2px; padding-bottom:8px; border-bottom:1px solid var(--line); }
-.docset-h small { color:var(--muted); font-size:12px; }
-.docset label { display:flex; justify-content:space-between; align-items:center; gap:10px; font-size:12.5px; color:var(--muted); white-space:nowrap; }
-.docset .fg { display:flex; border:1px solid var(--line); border-radius:7px; overflow:hidden; }
-.docset .fg button { all:unset; cursor:pointer; padding:4px 8px; color:var(--ink); font-size:12.5px; }
-.docset .fg button + button, .docset .fg .val { border-left:1px solid var(--line); }
-.docset .fg button:hover:not(:disabled) { background:var(--sel); }
-.docset .fg button.on { background:var(--ink); color:var(--paper); }
-.docset .fg button:disabled { color:var(--muted); opacity:.5; cursor:default; }
-.docset .val { padding:4px 8px; min-width:36px; text-align:center; color:var(--muted); }
-.docset .val + button { border-left:1px solid var(--line); }
-.docset-f { border-top:1px solid var(--line); padding-top:8px; font-size:12.5px; }
+
+/* the inspector on the right (like Pages): the whole document, the job match, versions */
+.edwrap { grid-template-columns:minmax(0,1fr) 284px; }
+.inspector { position:sticky; top:64px; align-self:start; background:var(--paper); border:1px solid var(--line); border-radius:12px; box-shadow:var(--shadow-sm); display:flex; flex-direction:column; max-height:calc(100vh - 220px); overflow:auto; }
+.ins-sec { padding:14px 16px; display:flex; flex-direction:column; gap:10px; }
+.ins-sec + .ins-sec { border-top:1px solid var(--line); }
+.ins-sec h4 { margin:0; font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); font-weight:650; }
+.ins-note { margin:-6px 0 2px; font-size:12px; color:var(--muted); }
+.ins-row { display:flex; align-items:center; justify-content:space-between; gap:10px; font-size:12.5px; }
+.ins-row .input { width:150px; padding:5px 8px; }
+.ins-col { display:flex; flex-direction:column; gap:5px; font-size:12.5px; }
+.seg-ctl { display:flex; border:1px solid var(--line); border-radius:7px; overflow:hidden; }
+.seg-ctl button { all:unset; cursor:pointer; flex:1; text-align:center; padding:5px 4px; font-size:12px; color:var(--ink); }
+.seg-ctl > * + * { border-left:1px solid var(--line); }
+.seg-ctl button:hover:not(:disabled) { background:var(--sel); }
+.seg-ctl button.on { background:var(--ink); color:var(--paper); }
+.seg-ctl button:disabled { opacity:.4; cursor:default; }
+.seg-ctl.stepper { width:150px; }
+.seg-ctl.stepper span { flex:1.3; text-align:center; padding:5px 0; font-size:12px; color:var(--muted); }
+.inspector .note { margin:0 16px 14px; }
