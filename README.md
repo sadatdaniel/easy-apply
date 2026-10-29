@@ -10,7 +10,7 @@ Easy Apply keeps it all in order. Think in folders and files: every application 
 
 **Open [easy-apply.sadatdaniel.workers.dev](https://easy-apply.sadatdaniel.workers.dev) in Chrome or Edge.** Nothing to install, no account: choose where to keep your files, upload your CV and cover letter, and Easy Apply guides you through the rest.
 
-After the first visit it also works offline (that first visit downloads the whole app, about 7 MB, so give it a minute), and you can install it as an app from the address bar.
+After the first visit it also works offline (that first visit downloads the whole app, about 10 MB, so give it a minute), and you can install it as an app from the address bar.
 
 ![An application in its own window: its files in a strip, the one you picked open for editing](docs/screenshots/applications.png)
 
@@ -78,7 +78,7 @@ LM Studio works the same way: turn on CORS in its server settings.
 - **Chrome or Edge.** Easy Apply is built and tested for them. Firefox and Safari don't let a website open a folder on your computer, and there's nothing a website can do about that: in those browsers your files can only live inside the browser.
 
 - Word files keep their look best. A PDF keeps its fonts and sizes, but not its colours.
-- If your Word file uses a font Easy Apply doesn't come with (Calibri, Cambria and the like), Export asks once whether it may use the fonts on your computer, so the PDF has them too. Say no, or use another browser, and a similar font stands in.
+- **Fonts.** Roboto, Fira Sans and Inter come with Easy Apply. So do free twins of Arial, Helvetica, Times New Roman, Calibri, Cambria and Georgia, with the same letter widths, so your lines and pages break exactly as in Word; Garamond gets EB Garamond, the same design. For anything else (Aptos, Verdana, Tahoma, ...), Export asks once whether it may use the fonts on your computer, so the PDF has the real ones. Say no, or use another browser, and a similar font stands in.
 - Photos and other images inside a CV are left out; the text comes through.
 - Designer templates built from floating text boxes come in as text, but may need their order and headings fixed by hand.
 

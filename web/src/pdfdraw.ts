@@ -42,7 +42,7 @@ function faces(): Face[] {
 }
 
 // fonts a document may name that the app doesn't ship, and the shipped font with the same letter widths
-const STAND_IN: Record<string, string> = { arial: 'arimo', helvetica: 'arimo', 'helvetica neue': 'arimo', 'times new roman': 'tinos', times: 'tinos', 'sans-serif': 'arimo', serif: 'tinos' };
+const STAND_IN: Record<string, string> = { calibri: 'carlito', cambria: 'caladea', georgia: 'gelasio', garamond: 'eb garamond', arial: 'arimo', helvetica: 'arimo', 'helvetica neue': 'arimo', 'times new roman': 'tinos', times: 'tinos', 'sans-serif': 'arimo', serif: 'tinos' };
 
 /*
   Fonts installed on this computer: an uploaded Word file keeps its own font (Calibri, Cambria, ...), which the

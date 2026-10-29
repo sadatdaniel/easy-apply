@@ -65,7 +65,7 @@ describe("a Word file's own look", () => {
     const look = readDocxLook({ document, styles, theme }, markdown, parse);
     const html = renderDoc(parseBlocks(markdown), 'original', 'cv', 'en', { align: 'left' }, look);
     const style = new JSDOM(html).window.document.querySelector('.sheet')!.getAttribute('style')!;
-    expect(style).toContain('--o-font:"Calibri", Arimo, Arial, sans-serif');
+    expect(style).toContain('--o-font:"Calibri", "Carlito", Arimo, Arial, sans-serif');
     expect(style).toContain('--o-h-case:uppercase');
     expect(style).toContain('--o-mx:20mm');
     expect(html).toContain('st-left');

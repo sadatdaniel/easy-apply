@@ -34,10 +34,15 @@ export function cleanLook(v: unknown): DocLook | undefined {
   return Object.keys(out).length ? out : undefined;
 }
 
+// Word fonts with a free look-alike the app ships: the same letter widths (so the same line breaks), except
+// EB Garamond, the same design only; Arial and Times New Roman have theirs (Arimo, Tinos) in every stack below
+const LOOK_ALIKE: [RegExp, string][] = [[/^calibri/i, 'Carlito'], [/^cambria/i, 'Caladea'], [/^georgia/i, 'Gelasio'], [/garamond/i, 'EB Garamond']];
+
 /** a font with a close stand-in that ships with the app, for computers that don't have it */
 function stack(f: string) {
   const serif = /times|garamond|georgia|cambria|book|palatino|baskerville|minion|caslon|serif|didot|bodoni|constantia/i.test(f) && !/sans/i.test(f);
-  return `"${f}", ${serif ? 'Tinos, "Times New Roman", serif' : 'Arimo, Arial, sans-serif'}`;
+  const twin = LOOK_ALIKE.find(([re]) => re.test(f))?.[1];
+  return `"${f}", ${twin && twin.toLowerCase() !== f.toLowerCase() ? `"${twin}", ` : ''}${serif ? 'Tinos, "Times New Roman", serif' : 'Arimo, Arial, sans-serif'}`;
 }
 const pt = (n: number) => `${n}pt`;
 
