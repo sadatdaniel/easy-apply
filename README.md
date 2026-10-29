@@ -10,7 +10,7 @@ Easy Apply keeps it all in order. Think in folders and files: every application 
 
 **Open [easy-apply.sadatdaniel.workers.dev](https://easy-apply.sadatdaniel.workers.dev) in Chrome or Edge.** Nothing to install, no account: choose where to keep your files, upload your CV and cover letter, and Easy Apply guides you through the rest.
 
-After the first visit it also works offline (that first visit downloads the whole app, about 10 MB, so give it a minute), and you can install it as an app from the address bar.
+It runs right in the browser tab. While you start, it saves itself for offline use in the background (about 10 MB, once; a note in the corner shows how far it has got). If you like, you can also install it from the address bar: that only gives it its own window and an icon in your Start menu or Dock.
 
 ![An application in its own window: its files in a strip, the one you picked open for editing](docs/screenshots/applications.png)
 
